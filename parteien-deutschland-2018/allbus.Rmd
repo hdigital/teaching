@@ -1,0 +1,158 @@
+---
+title: "Parteien Bundesrepublik"
+author: "Holger Doering -- doering@uni-bremen.de"
+output:
+  html_document:
+    code_folding: hide
+    fig_width: 6
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+options(width=100)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE)  # echo=FALSE
+# options(knitr.kable.NA = "")
+```
+
+Datenquelle [ALLBUS ZA4578](https://dbk.gesis.org/dbksearch/sdesc2.asp?no=4578&search=ALLBUS&search2=&DB=d&tab=0&notabs=&nf=1&af=&ll=10)
+
+```{r}
+set.seed(111)
+partei_anonym <- T
+
+library(tidyverse)
+library(Hmisc)
+```
+
+Aus dem ALLBUS wurden die die Jahre _1980, 1996, 2012_ ausgewählt und die _ostdeutschen Bundesländer_ entfernt ('oversampling').
+
+```{r, include=partei_anonym}
+print("Parteinamen für CDU/CSU, SPD, FDP, und Gruene anonymisiert")
+```
+
+```{r}
+# Stata Datensatz einlesen
+if(FALSE) {
+  allbus_dta <- haven::read_dta("daten/allbus-2015/ZA4578/ZA4578_v1-0-0.dta.zip")
+  names(allbus_dta) <- tolower(names(allbus_dta))
+
+  allbus <- allbus_dta %>%
+    filter(v5 == 1,  # Ostdeutsche Bundeslaender entfernen
+           v2 %in% c(1980, 1996, 2012))  # drei Befragungen
+  
+  saveRDS(allbus, "daten/allbus-2015/allbus-auswahl.rds")
+}
+
+allbus_raw <- read_rds("daten/allbus-2015/allbus-auswahl.rds")
+vpi <- read_csv("daten/allbus-2015/vpi.csv")
+
+allbus <- 
+  allbus_raw %>%
+  mutate(
+    alter = v651, 
+    einkommen = v820,
+    partei = as_factor(v29) %>% as.character(),
+    # links/rechts kontinuierlich für Kernel-Dichte
+    links_rechts = ifelse(v24 >= 1 & v24 <= 10, v24, NA),
+    links_rechts = scales::rescale(links_rechts, c(0.5, 9.5)) + runif(n(), -0.5, 0.5),
+    jahr = as_factor(v2) %>% as.character(), 
+    jahr = jahr %>% stringr::str_extract("\\d+") %>% as.integer()
+    ) %>%
+  left_join(vpi) %>%
+  mutate(einkommen = einkommen * vpi) %>%
+  filter(alter <= 150, einkommen <= 7500)
+
+# allbus <- haven::zap_labels(allbus)
+
+
+# Parteien auswählen und umkodieren
+others <- "andere"
+parteien <- c("CDU-CSU", "spd", "fdp", "DIE GRUENEN", others)
+parteien_label <- c("CDU-CSU", "SPD", "FDP", "Gruen", others)
+allbus <- allbus %>% 
+  mutate(partei = ifelse(partei %in% parteien, partei, others),
+         partei = factor(partei, levels = parteien, labels = parteien_label))
+
+# Parteinamen anonymisieren
+if(partei_anonym == TRUE) {
+  allbus <- allbus %>% 
+    filter(partei != others) %>% 
+    mutate(partei = fct_anon(partei, prefix = "Partei-") %>% as.character())
+}
+```
+
+Verteilung ausgewähter Variablen nach Parteien
+
+ * _ymin, ymax_ -- 95% Konfidenzintervall Mittelwert
+ * Grafik [Kerndichteschätzung](http://de.wikipedia.org/wiki/Kerndichtesch%C3%A4tzer)
+
+```{r}
+plot_allbus <- function(var) {
+  pl <- ggplot(allbus, aes_string(x=var)) +
+    geom_density(adjust=1.5) +
+#    geom_histogram() +
+    facet_grid(jahr ~ partei)
+  print(pl)
+}
+
+# qplot(partei, einkommen, data = allbus, geom = "boxplot")
+
+summary_mean <- function(var, round_digits = 2) {
+  allbus %>%
+    group_by(partei) %>% 
+    do(mean_cl_boot(pull(., !!var))) %>% 
+    mutate_if(is.numeric, ~ round(., round_digits))
+}
+
+report <- function(var, round) {
+  print(var)
+  summary_mean(var, round_digits = round) %>% as.data.frame() %>% print()
+  plot_allbus(var)
+}
+report("alter", 0)
+report("einkommen", -1)
+report("links_rechts", 1)
+```
+
+Häufigkeiten (%) ausgewähter Variablen nach Parteien
+
+```{r}
+allbus_var_freq <- function(var, ignore = c()) {
+  var <- rlang::sym(var)
+  allbus %>% 
+    mutate(kategorie = as_factor(!! var)) %>%
+    filter(! kategorie %in% ignore) %>% 
+    count(partei, kategorie) %>% 
+    group_by(partei) %>% 
+    mutate(anteil = round(prop.table(n) * 100, 1)) %>% 
+    group_by(kategorie) %>% 
+    mutate(anteil_max = max(anteil)) %>% 
+    ungroup()
+}
+
+table_desc <- function(var, var_desc, ignore = c(), share_min = 5) {
+  df <- allbus_var_freq(var, ignore)
+  print(glue::glue("{var_desc} -- N = {df %>% pull(n) %>% sum()}"))
+  df <- df %>%
+    filter(anteil_max >= share_min) %>% 
+    select(-n, -anteil_max) %>% 
+    spread(partei, anteil) %>% 
+    as.data.frame() %>%
+    print()
+}
+
+table_desc("v653", "Geschlecht -- V653")
+table_desc("v1639", "Gewerkschaft (Mitglied) -- V1639", c("NICHT ERHOBEN", "KEINE ANGABE"))
+table_desc("v654", "Konfession -- V654", c("verweigert", "KEINE ANGABE"))
+table_desc("v690", "Berufliche Stellung -- V690 [Auswahl]", c("TRIFFT NICHT ZU"))
+table_desc("v845", "Familienstand -- V845")
+```
+
+```{r, include = ! partei_anonym}
+print("Zusammensetzung Daten -- Kategorien 'andere'")
+table(allbus$jahr, allbus$partei) %>% prop.table(1) %>% "*" (100) %>% round(1)
+```
+

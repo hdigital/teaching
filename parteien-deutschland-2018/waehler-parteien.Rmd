@@ -1,0 +1,160 @@
+---
+title: "Parteien und Wahlen in Deutschland"
+author: "Holger Doering -- doering@uni-bremen.de"
+output: 
+  html_document: 
+    toc: yes
+    code_folding: hide
+    fig_width: 6 
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readr)
+library(haven)
+library(knitr)
+```
+
+__Literatur Grundlage__
+
+ * Saalfeld, Thomas. 2007. Parteien und Wahlen. Nomos.
+ * Seiten 88-119
+
+
+# GLES Wahlstudie
+
+German Longitudinal Election Study (GLES) 2017 -- [gles.eu](http://gles.eu)
+
+
+```{r, message=FALSE, warning=FALSE}
+gles_raw <- haven::read_dta("daten/gles-2017/ZA6801_v2-0-0.dta", encoding = "latin1")
+
+gles <- 
+  gles_raw %>% 
+  select(
+    erststimme = q19aa,
+    zweitstimme = q19ba,
+    links_rechts = q32
+  ) %>% 
+  mutate(
+    links_rechts = ifelse(links_rechts < 0, NA, links_rechts)
+    )
+```
+
+
+## Q-19: BTW Erst-/Zweitstimme
+
+_Fragetext:_
+Bei der Bundestagswahl konnten Sie ja zwei Stimmen vergeben. Die Erststimme für einen Kandidaten
+aus Ihrem Wahlkreis, die Zweitstimme für eine Partei. Hier ist ein Musterstimmzettel, ähnlich wie Sie
+ihn bei der Bundestagswahl erhalten haben. Wie haben Sie auf Ihrem Stimmzettel angekreuzt? Bitte
+nennen Sie mir jeweils die Kennziffer für Ihre Erst- und Zweitstimme.
+
+```{r, message=FALSE, warning=FALSE}
+partei <-
+  gles %>% 
+  select(-links_rechts) %>% 
+  filter(erststimme > 0, zweitstimme > 0) %>% 
+  mutate(
+    erststimme = as_factor(erststimme),
+    zweitstimme = as_factor(zweitstimme)
+    )
+
+partei %>%
+  count(zweitstimme) %>%
+  mutate(anteil = round(100*n/sum(n), 1)) %>% 
+  kable()
+
+partei %>%
+  count(erststimme) %>%
+  mutate(anteil = round(100*n/sum(n), 1)) %>% 
+  kable()
+```
+
+#### Kreuztabelle: Zweit- und Erststimme
+
+```{r, message=FALSE, warning=FALSE}
+partei %>% 
+  count(zweitstimme, erststimme) %>% 
+  spread(erststimme, n) %>% 
+  kable()
+```
+
+
+## Q-32: Links-Rechts-Selbsteinstufung
+
+_siehe auch Saalfeld (2007, 92) -- Tabelle 2.6_
+
+_Fragetext:_
+Und wie ist das mit Ihnen selbst? Wo würden Sie sich auf der Skala von 1 bis 11 einordnen?
+
+
+```{r, message=FALSE, warning=FALSE}
+gles %>%
+  filter(! is.na(links_rechts)) %>% 
+  count(links_rechts) %>% 
+  mutate(anteil = round(100*n/sum(n), 1),
+         kumuliert = cumsum(anteil)) %>% 
+  kable()
+
+ggplot(gles, aes(links_rechts)) + 
+  geom_vline(aes(xintercept=median(links_rechts, na.rm = TRUE)),
+             colour = "grey30", linetype="dotted") +
+  geom_density(adjust=2)
+```
+
+__Q-31:__ Links-Rechts-Einstufung Parteien
+
+__Fragetext:__
+In der Politik reden die Leute häufig von "links" und "rechts". Wenn Sie diese Skala von 1 bis 11
+benutzen, wo würden Sie die folgenden Parteien einordnen, wenn 1 "links" und 11 "rechts" ist? 
+
+Items: (A) CDU; (B) CSU; (C) SPD; (D) DIE LINKE; (E) GRÜNE; (F) FDP; (G) AfD
+
+```{r, message=FALSE, warning=FALSE}
+lr_partei <- 
+  gles_raw %>% 
+  select(starts_with("q31")) %>% 
+  gather(partei, links_rechts) %>%
+  filter(links_rechts >= 0)
+
+ggplot(lr_partei, aes(links_rechts)) +
+  geom_density(adjust=5) +
+  geom_vline(aes(xintercept=median(links_rechts, na.rm = TRUE)),
+             colour = "grey30", linetype="dotted") +
+  facet_wrap(~partei)
+```
+
+
+# Manifesto Daten
+
+_siehe auch Saalfeld (2007, 96) -- Tabelle 2.8_
+
+https://manifesto-project.wzb.eu/
+
+__rile:__ Right-left position of party
+
+```{r, message=FALSE, warning=FALSE}
+manifesto_raw <- read_csv("daten/manifesto-2017/MPDataset_MPDS2017b.csv")
+
+ma_deu <- 
+  manifesto_raw %>% 
+  filter(countryname == "Germany") %>% 
+  mutate(
+    pervote = round(pervote, 1),
+    year = date %/% 100,
+    rile = round(rile, 1)
+    ) %>%
+  select(year, partyname, pervote, rile)
+
+deu_rile <- 
+  ma_deu %>%
+  group_by(year) %>% 
+  summarise(rile_range = max(rile) - min(rile))
+
+ggplot(deu_rile, aes(year, rile_range)) + geom_line()
+
+kable(ma_deu)
+```

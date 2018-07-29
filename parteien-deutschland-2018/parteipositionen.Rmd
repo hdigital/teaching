@@ -1,0 +1,262 @@
+---
+title: "Postionen Parteien"
+output:
+  html_document:
+    code_folding: hide
+    fig_width: 6
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(haven)
+library(knitr)
+```
+
+# GLES Wahlstudie
+
+German Longitudinal Election Study (GLES) 2017 -- [gles.eu](http://gles.eu)
+
+```{r, message=FALSE, warning=FALSE}
+gles_raw <- haven::read_dta("daten/gles-2017/ZA6801_v2-0-0.dta", encoding = "latin1")
+```
+
+## Q-32: Links-Rechts-Selbsteinstufung
+
+_Fragetext:_
+Und wie ist das mit Ihnen selbst? Wo würden Sie sich auf der Skala von 1 bis 11 einordnen?
+
+
+```{r, message=FALSE, warning=FALSE, fig.height=2.5, fig.width=3.5}
+lr_waehler <- 
+  gles_raw %>% 
+  mutate(
+    variable = "waehler_selbst",
+    partei = as_factor(q19ba) %>% as.character(), # zweitstimme
+    links_rechts = ifelse(q32 < 0, NA, q32)
+    ) %>% 
+  filter(str_detect(partei, ("^[A-Z]"))) %>% 
+  select(variable, partei, links_rechts)
+
+ggplot(lr_waehler, aes(x = links_rechts)) +
+  geom_density(adjust=5)
+```
+
+<p style="page-break-before: always">
+
+## Q-31: Links-Rechts-Einstufung Parteien
+
+_Fragetext:_
+In der Politik reden die Leute häufig von "links" und "rechts". Wenn Sie diese Skala von 1 bis 11
+benutzen, wo würden Sie die folgenden Parteien einordnen, wenn 1 "links" und 11 "rechts" ist? 
+
+Items: (A) CDU; (B) CSU; (C) SPD; (D) DIE LINKE; (E) GRÜNE; (F) FDP; (G) AfD
+
+```{r, message=FALSE, warning=FALSE}
+q31_partei <-
+  tibble(
+    q31 = letters[1:7],
+    partei = c("CDU/CSU", "CDU/CSU", "SPD", "DIE LINKE", "GRUENE", "FDP", "AfD")
+  )
+
+lr_q31 <- 
+  gles_raw %>% 
+  mutate(zweitstimme = as_factor(q19ba) %>% as.character()) %>% 
+  select(zweitstimme, starts_with("q31")) %>% 
+  gather(q31, links_rechts, -zweitstimme)
+
+lr_partei <- 
+  lr_q31 %>%  
+  mutate(
+    variable = "befragte_partei",
+    q31 = str_replace(q31, "q31", "")
+    ) %>%
+  left_join(q31_partei) %>% 
+  filter(links_rechts >= 0) %>% 
+  select(-q31)
+
+lr_wa_pa <- 
+  lr_partei %>% 
+  filter(zweitstimme == partei) %>% 
+  mutate(variable = "waehler_partei")
+```
+
+#### Positionen Parteien
+
+```{r, message=FALSE, warning=FALSE}
+partei_factor <- c("DIE LINKE", "GRUENE", "SPD", "FDP", "CDU/CSU", "AfD")
+lr <- 
+  bind_rows(lr_waehler, lr_partei, lr_wa_pa) %>% 
+  mutate(partei = fct_relevel(partei, partei_factor))
+
+ggplot(lr, aes(x = links_rechts, colour = variable)) +
+  geom_density(adjust=5) +
+  facet_wrap(~partei)
+```
+
+<p style="page-break-before: always">
+
+# CHES expert survey
+
+https://www.chesdata.eu/1999-2014-chapel-hill-expert-survey-ches-trend-file
+
+## Two-dimensional space
+
+
+```{r}
+ches_raw <- read_dta("daten/ches-2014/1999-2014_CHES_dataset_means-3.dta")
+
+ches_deu <-
+  ches_raw %>%
+  zap_labels() %>% 
+  filter(country == 3, vote > 4) %>%
+  mutate(
+    year = as.factor(year),
+    party = case_when(
+      party %in% c("LINKE", "Linkspartei/PDS", "PDS") ~ "Linke",
+      party == "Grunen" ~ "Grüne",
+      TRUE ~ party
+      )
+    )
+
+ggplot(ches_deu, aes(x=lrecon, y=galtan, colour = party, shape = year)) + geom_point()
+
+```
+
+__LRECON__ -- position of the party in YEAR in terms of its ideological __stance on economic issues__.
+Parties can be classified in terms of their stance on economic issues. Parties on the economic left
+want government to play an active role in the economy. Parties on the economic right emphasize a
+reduced economic role for government: privatization, lower taxes, less regulation, less government
+spending, and a leaner welfare state.
+
+__GALTAN__ -- position of the party in YEAR in terms of of their views on __democratic freedoms
+and rights__. “Libertarian” or “postmaterialist” parties favor expanded personal freedoms, for example,
+access to abortion, active euthanasia, same-sex marriage, or greater democratic participation.
+“Traditional” or “authoritarian” parties often reject these ideas; they value order, tradition, and
+stability,
+
+<p style="page-break-before: always">
+
+## Most important issue in 2014
+
+Most Important Issue -- Only asked in 2014
+
+Entries for the next three questions are a summary of the expert responses to the Most Important
+Issue question. Each expert ranked one issue as the most important, one issue as the second most
+important, and one issue as the third most important issue. In this dataset, we aggregate these
+responses using a simple ordinal voting technique. For each party, an issue received 10 points if it
+is ranked as the #1 issue by an expert, 5 points if it is ranked #2 by an expert, and 1 point if it is
+ranked #3 by an expert. After adding together the issue scores for all the experts for each individual
+party, we ranked each issue by the total number of points, yielding the MIP_ONE, MIP_TWO,
+and MIP_THREE variables. As the table shows, some parties have ties for the most important
+issue questions, which reflects the experts’ uncertainty or disagreement on particular parties.11
+
+ * MIP_ONE = most important issue for the party over the course of YEAR.
+ * MIP_TWO = second most important issue for the party over the course of YEAR.
+ * MIP_THREE = third most important issue for the party over the course of YEAR.
+
+```{r, message=FALSE, warning=FALSE}
+mip_issues <- read_csv("daten/ches-2014/most-important-issue.csv")
+mip <-
+  ches_deu %>% 
+  select(party, year, starts_with("mip_")) %>% 
+  gather(key, id, -party, -year) %>% 
+  filter(! is.na(id)) %>% 
+  left_join(mip_issues) %>% 
+  arrange(party, key) %>% 
+  select(party, key, issue)
+
+mip %>%
+  spread(key, issue) %>%
+  select(party, mip_one, mip_two, mip_three) %>% 
+  kable()
+```
+
+<p style="page-break-before: always">
+
+# Manifesto content analysis
+
+https://manifesto-project.wzb.eu/
+
+## rile -- right-left position of party
+
+Right-left position of party as given in Michael Laver/Ian Budge (eds.):
+Party Policy and Government Coalitions, Houndmills, Basingstoke, Hampshire: The MacMillan Press 1992:
+
+```
+rile = 
+  (per104 + per201 + per203 + per305 + per401 + per402 + per407 + 
+   per414 + per505 + per601 + per603 + per605 + per606)
+  - (per103 + per105 + per106 + per107 + per403 + per404 + per406 + 
+     per412 + per413 + per504 + per506 + per701 + per202)
+```
+
+```{r, message=FALSE, warning=FALSE}
+manifesto_raw <- read_csv("daten/manifesto-2017//MPDataset_MPDS2017b.csv")
+
+ma_deu <- 
+  manifesto_raw %>% 
+  filter(countryname == "Germany", pervote > 4.5, date > 196000) %>% 
+  mutate(
+    year = date %/% 100,
+    rile = round(rile, 1),
+    Partei = case_when(
+      party %in% c(41111, 41113) ~ "B90/Grüne",
+      party %in% c(41221, 41222, 41223) ~ "Linke/PDS",
+      TRUE ~ partyabbrev
+    )
+  )
+
+ggplot(ma_deu, aes(x = year, y = rile, colour = Partei, linetype = Partei)) + geom_line()
+```
+
+<p style="page-break-before: always">
+
+## Germany 2017 manifestos
+
+```{r, message=FALSE, warning=FALSE}
+ma_var <- read_csv("daten/manifesto-2017/variables.csv")
+
+path <- "daten/manifesto-2017/Germany-2017/"
+ma_files <- list.files(path, pattern = "csv$")
+ma_2017_raw <- map_df(ma_files, ~ read_csv(paste0(path, .x)) %>% mutate(file = .x))
+
+ma_2017 <- 
+  ma_2017_raw %>% 
+  mutate(party = str_extract(file, "\\d+") %>% as.integer()) %>% 
+  left_join(ma_deu %>% distinct(party, partyabbrev)) %>% 
+  filter(! cmp_code %in% c("H", "0")) %>% 
+  select(partyabbrev, cmp_code, content) %>% 
+  group_by(partyabbrev)
+```
+
+#### Most frequent categories
+
+```{r, message=FALSE, warning=FALSE}
+cmp_code_info <- 
+  ma_var %>%
+  select(cmp_code = variable, label) %>% 
+  mutate(cmp_code = str_remove(cmp_code, "^per"), 
+         cmp_code = str_replace_all(cmp_code, "_", "."))
+
+ma_2017 %>%
+  count(cmp_code) %>% 
+  arrange(-n) %>% 
+  left_join(cmp_code_info) %>% 
+  slice(1:3) %>% 
+  kable
+```
+
+#### Examples classified quasi-sentences
+
+```{r, message=FALSE, warning=FALSE}
+ma_2017 %>% 
+  left_join(cmp_code_info) %>% 
+  slice(1:4) %>% 
+  kable
+```
+

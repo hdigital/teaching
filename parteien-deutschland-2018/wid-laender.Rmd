@@ -1,0 +1,141 @@
+---
+title: "Parteiensysteme Bundesländer"
+output: 
+  html_document: 
+    code_folding: hide
+    fig_width: 6
+    fig_height: 4
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+options(width=100)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE)  # echo=FALSE
+options(knitr.kable.NA = "")
+```
+
+
+```{r}
+library(tidyverse)
+library(knitr)
+```
+
+__Quellen__
+
+ * Schniewind, Aline. 2008. ‘Parteiensysteme’. SS. 63-109 in Die Demokratien der deutschen Bundesländer: Politische Institutionen im Vergleich, Hrsg. Markus Freitag und Adrian Vatter. UTB, Stuttgart.
+ * Schröder, Valentin. 2018. “Wahlen in Deutschland.” [wahlen-in-deutschland.de](http://www.wahlen-in-deutschland.de).
+
+
+### Parameter
+
+
+__Effektive Parteienzahl (EPZ)__
+
+$EPZ = \frac{1}{\sum_{i=1}^{n} p_i^2}$
+
+ * $p_i$ -- Anteil der Parlamentsmandate der einzelnen Parteien
+ * $n$ -- Anzahl der im Parlament vertretenen Parteien
+ 
+__Volatilität (Pedersen-Index)__
+
+$V = \sum_{i=1}^{n} \frac{ | ( V_{it} - V_{i(t-1)} ) | }{ 2 }$
+
+
+ * $V_{it}$ -- Wählerstimmenanteil Partei $i$ zum Zeitpunkt $t$
+ * $V_{i(t-1)}$ -- Wählerstimmenanteil Partei $i$ zum Zeitpunkt $t-1$
+ * Wertebereich Indikator $V$ --  0% bis 100%
+
+__Polarisierung__
+
+ * _Beispiel_ -- Konzentration von Wählerstimmen auf große Parteien (CDU und SPD)
+ * weitere Parameter Polarisierung siehe Schniewind (2008, 80—82)
+ 
+
+```{r daten}
+wid_raw <- read_csv("daten/wahlen-in-dtl/wid-ergebnisse.csv")
+laender <- read_csv("daten/wahlen-in-dtl/state_names.csv")
+
+date_prev <- 
+  wid_raw %>% 
+  distinct(state, date) %>% 
+  mutate(
+    date = as.character(date),
+    date_prev = lag(date),
+    date_prev = ifelse(date > date_prev, date_prev, NA),
+    date_prev = as.Date(date_prev)
+    )
+
+vote_prev <- 
+  wid_raw %>% 
+  select(date_prev = date, state, party, vote_share_prev = votes_p)
+
+wid <- 
+  wid_raw %>% 
+  mutate(
+        date = as.character(date),
+        seats_share = round(100 * seats / seatstotal, 2)
+    ) %>% 
+  select(widvote_id:date, party, vote_share = votes_p, seats_share) %>% 
+  left_join(date_prev) %>% 
+  left_join(vote_prev) %>% 
+  left_join(laender)
+
+# write_csv(wid, "wid-laender-ergebnisse.csv")
+```
+
+```{r parameter}
+cdu_spd <- 
+  wid %>%
+  filter(party %in% c("cdu", "csu", "spd")) %>% 
+  group_by(state_name, date) %>% 
+  summarise(cdu_spd = sum(vote_share, na.rm = TRUE))
+
+wid_param <- 
+  wid %>%
+  group_by(state_name, date) %>% 
+  summarise(
+    epz = 1 / sum((vote_share/100)^2, na.rm = TRUE),
+    volatilitaet = sum(abs(vote_share - vote_share_prev) / 2, na.rm = TRUE)
+  ) %>% 
+  left_join(cdu_spd) %>% 
+  mutate_if(is.numeric, round, 1)
+
+write_csv(wid_param, "wid-laender-parameter.csv")
+
+wid_param_dec <- 
+  wid_param %>% 
+  mutate(decade = round(lubridate::year(date) / 10) * 10) %>% 
+  group_by(state_name, decade) %>% 
+  summarise_if(is.numeric, ~ round(mean(., na.rm = TRUE), 1))
+```
+
+### Bundesländer
+
+Mittelwerte für die 1990er und die 2010er
+
+```{r decades}
+wid_param_dec %>% 
+  group_by(state_name) %>%
+  filter(decade %in% c(1990, 2010)) %>%
+  kable()
+```
+
+<p style="page-break-before: always">
+
+Parameter für ausgewählte Länder seit 1950
+
+```{r graphs}
+pl_states <- c("Baden-Württemberg", "Berlin", "Bremen", "Nordrhein-Westfalen")
+pl_df <- wid_param %>%
+  filter(state_name %in% pl_states) %>%
+  mutate(year = lubridate::year(date))
+
+plot_param <- function(parameter) {
+  ggplot(pl_df, aes_string(x = "year", y = parameter, color = "state_name")) + 
+    geom_line() + 
+    geom_point(color = "darkgrey", size = 1)
+}
+plot_param("epz")
+plot_param("volatilitaet")
+plot_param("cdu_spd")
+```
