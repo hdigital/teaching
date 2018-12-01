@@ -1,0 +1,131 @@
+---
+title: "Twitter wordcloud"
+author: "Holger Doering"
+date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
+output:
+  html_document:
+    code_folding: hide
+---
+
+```{r knitr-default, include=FALSE}
+# Keep Knitr chunks quiet ----
+
+if(require(knitr)) {
+  knitr::opts_chunk$set(
+    results="hide",
+    message=FALSE,
+    warning=FALSE,
+    package.startup.message = FALSE
+    )
+}
+```
+
+```{r packages}
+# Load packages and install missing packages
+
+pkgs <- c("tidyverse", "twitteR", "quanteda")
+reqs <- vapply(pkgs, require, character.only = TRUE, FUN.VALUE = logical(1))
+if(any(! reqs)) { 
+  install.packages(pkgs[!reqs], repos = "http://cran.r-project.org")  
+}
+```
+
+```{r twitter-access}
+# Setting up Twitter access ----
+
+# ADD YOUR PERSONAL TWITTER API ACCESS (OAuth access token)
+# see https://dev.twitter.com/oauth/overview/application-owner-access-tokens
+consumer_key <- ""
+consumer_secret <- ""
+access_token <- ""
+access_token_secret <- ""
+
+# load personal Twitter API tokens ---- optional if keys are not be specified above
+key_file <- "twitter-api-key.json"
+if (file.exists(key_file)) {
+  read_file(key_file) %>%
+    jsonlite::fromJSON() %>%
+    list2env(envir = .GlobalEnv)
+}
+
+# authentication Twitter access
+options(httr_oauth_cache = FALSE)  # skip required user input next line
+twitteR::setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_token_secret)
+```
+
+```{r twitter-get}
+# Get tweets and turn into dataset ----
+
+get_tweets <- function(term, timeline = FALSE, tw_max = 250) {
+  if(timeline) {
+    tweets <- twitteR::userTimeline(term, n = tw_max)
+  } else {
+    tweets <- twitteR::searchTwitter(term, n = tw_max)
+  }
+  return(tweets)
+}
+
+search_term <- "parlgov"  # or "#groko" (timeline <- FALSE) ---- parlgov reutersworld nytimesworld
+timeline <- TRUE
+
+tweets <- get_tweets(search_term, timeline = timeline)
+tw_df <- twListToDF(tweets)
+```
+
+```{r twitter-dataset}
+# Write results into dataset file ----
+
+file_name <- "tweets.csv"
+
+if(file.exists(file_name)) {
+  tw_all <- read_csv(file_name)                                  # read existing data
+  tw_add <- tw_df %>% filter(! id %in% tw_all$id)                # select new tweets
+  tw_out <- tw_all %>% rbind(tw_add) %>% arrange(desc(created))  # combine old and new tweets
+} else {
+  tw_out <- tw_df
+}
+
+write_csv(tw_out, file_name, na = "")
+```
+
+```{r wordcloud}
+# Analyse and visualise results ----
+
+tw_cp <- corpus(
+  tw_df %>% select(id, created, text), 
+  text_field = "text",
+  docvars = "created"
+  )
+
+tw_dfm <- 
+  tw_cp %>% 
+  tokens(remove_punct = TRUE, remove_twitter = TRUE) %>% 
+  tokens_remove(phrase(c(stopwords("en"), "http*", "news","t.co"))) %>% 
+  dfm()
+
+textplot_wordcloud(tw_dfm)
+```
+
+
+```{r}
+# tools for description of results
+get_date <- function(date_vec, FUN = max) format(FUN(date_vec), "%a, %d %b %Y, %H:%M")
+get_search_info <- ifelse(timeline==TRUE, paste0("@", search_term), search_term)
+```
+
+
+## Wordcloud of Twitter – `r get_search_info`
+
+`r nrow(tw_df)`
+tweets 
+`r if (timeline) "[timeline]"`
+from 
+`r get_date(tw_df$created, min)`
+to 
+`r get_date(tw_df$created)`
+
+Document created: `r get_date(Sys.time())`
+
+```{r}
+textplot_wordcloud(tw_dfm)
+```

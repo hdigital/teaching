@@ -1,0 +1,123 @@
+---
+title: 'Twitter wordcloud'
+author: Holger Döring
+output:
+  html_document:
+    theme: united
+---
+
+Document created: `r format(Sys.time(), '%a, %d %b %Y, %H:%M')`
+
+
+```{r, message=FALSE, results='hide', warning=FALSE}
+rm(list = ls())
+
+pkgs <- c('dplyr', 'rjson', 'tm', 'twitteR', 'wordcloud')
+reqs <- vapply(pkgs, suppressMessages(require), character.only = TRUE, FUN.VALUE = logical(1))
+if(any(!reqs)) install.packages(pkgs[!reqs])  # install packages required
+
+
+# Setting up Twitter access ----------------------------------------------------
+
+# ADD YOUR PERSONAL TWITTER API APP DATA
+# see https://dev.twitter.com/oauth/overview/application-owner-access-tokens
+consumer_key <- ''
+consumer_secret <- ''
+access_token <- ''
+access_token_secret <- ''
+
+# load personal Twitter API tokens -- optional if keys shall not be specified above
+key.file <- 'twitter-api-key.json'
+if (file.exists(key.file)) rjson::fromJSON(file=key.file) %>% list2env(envir=.GlobalEnv)
+
+# authentication Twitter access
+options(httr_oauth_cache=FALSE)  # skip required user input next line
+twitteR::setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_token_secret)
+
+
+# Get and clean Tweets ---------------------------------------------------------
+
+GetTweets <- function(term, timeline=FALSE, tw.max=250) {
+  if(timeline) {
+    tweets <- twitteR::userTimeline(term, n=tw.max)
+  } else {
+    tweets <- twitteR::searchTwitter(term, n=tw.max)
+  }
+  return(tweets)
+}
+
+search.term <- 'reutersworld'  # or '#groko' (timeline <- FALSE) -- parlgov reutersworld nytimesworld
+timeline <- TRUE
+tweets <- GetTweets(search.term, timeline=timeline)
+tw.df <- do.call("rbind", lapply(tweets, as.data.frame))  # list into dataframe -- some magic!
+
+# regular expression to clean tweet
+re.clean <- '@\\w+|http(s?)\\S+'  # remove @..., http... ('#\\w+' #...)
+# vector of stopwords in different languages and words to be removed
+remove.words <- c(tm::stopwords('SMART'), tm::stopwords('german'), tm::removePunctuation(search.term),
+                  'rt', 'reuters', 'news', 'dass')  # add words to be removed
+
+# turn tweets text into list of cleaned tokens
+TweetToTokens <- function(tweet.text) {   # some magic with 'magrittr' pipes
+  tweet.text %>%
+    iconv("UTF-8", "ASCII", sub="") %>%   # remove special characters (avoid unicode issues)
+    tolower %>%                           # convert to lowercase
+    gsub(re.clean, '', ., perl=TRUE) %>%  # clean with regular expression defined above
+    tm::removeNumbers() %>%
+    tm::removePunctuation() %>%
+    tm::removeWords(remove.words)  %>%    # remove words defined above
+    tm::stripWhitespace()
+}
+
+tw.df$tokens <- TweetToTokens(tw.df$text)
+
+
+# Write results into dataset file ----------------------------------------------
+
+file.name <- 'tweets.csv'
+
+if(file.exists(file.name)) {
+  tw.all <- read.csv(file.name, as.is=TRUE, fileEncoding='cp1252')  # read existing data
+  tw.add <- filter(tw.df, ! id %in% tw.all$id)                      # select new tweets
+  tw.out <- rbind(tw.all, tw.add) %>% arrange(desc(created))        # combine old and new tweets
+} else {
+  tw.out <- tw.df
+}
+
+write.csv(tw.out, file.name, row.names=FALSE, na='', fileEncoding='cp1252')
+
+
+# Analyse and visualise results ------------------------------------------------
+
+# create term frequency table
+tw.tf <- tw.df$tokens %>%
+  paste(collapse=' ') %>%
+  strsplit(' +', perl=TRUE) %>%
+  # unlist %>% tm::stemDocument() %>%
+  table %>% 
+  as.data.frame(stringsAsFactors=FALSE)
+
+# keep only terms with 3 characters, 2 occurences
+tw.tf <- tw.tf[nchar(tw.tf[ , 1]) >= 3 & tw.tf[ , 2] >= 2 , ]
+
+wordcloud::wordcloud(tw.tf[ ,1], tw.tf[ ,2], colors=brewer.pal(6,"Dark2"), random.order=FALSE)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# tools for description of results
+date.format <- '%a, %d %b %Y, %H:%M'
+TweetDate <- function(x) { format(tweets[[x]]$created, date.format) }  # get formated date of tweet by index
+search.info <- ifelse(timeline==TRUE, paste0('@', search.term), search.term)
+```
+
+
+## Wordcloud of Twitter -- `r search.info`
+
+`r length(tweets)` tweets `r if (timeline) '[timeline]'` from `r TweetDate(length(tweets))` to `r TweetDate(1)`
+
+Document created: `r format(Sys.time(), date.format)`
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+wordcloud::wordcloud(tw.tf[ ,1], tw.tf[ ,2], colors=brewer.pal(6,"Dark2"), random.order=FALSE)
+```
