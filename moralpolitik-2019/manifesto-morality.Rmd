@@ -1,0 +1,160 @@
+---
+title: "Manifestos · Moral Values"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    code_folding: hide
+  html_notebook:
+    code_folding: hide
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_chunk$set(
+  # results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+  )
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+<!-- <p style="page-break-before: always"> -->
+
+
+#### Manifesto Project Dataset (version 2018b)
+
+* Volkens, Andrea / Krause, Werner / Lehmann, Pola / Matthieß, Theres / Merz, Nicolas / Regel, Sven / Weßels, Bernhard (2018): The Manifesto Data Collection. Manifesto Project (MRG/CMP/MARPOR). Version 2018b. Berlin: Wissenschaftszentrum Berlin für Sozialforschung (WZB). https://doi.org/10.25522/manifesto.mpds.2018b
+* [manifesto-project.wzb.eu](https://manifesto-project.wzb.eu/datasets)
+
+
+__per603__ -- Traditional Morality: Positive
+
+Favourable mentions of traditional and/or religious moral values. May include:
+
+* Prohibition, censorship and suppression of immorality and unseemly behaviour;
+* Maintenance and stability of the traditional family as a value;
+* Support for the role of religious institutions in state and society.
+
+__per604__ -- Traditional Morality: Negative
+
+Opposition to traditional and/or religious moral values. May include:
+
+* Support for divorce, abortion etc.;
+* General support for modern family composition;
+* Calls for the separation of church and state
+
+```{r corepacks}
+library(tidyverse)
+library(glue)
+```
+
+#### Europe
+
+```{r}
+mp_raw <- read_csv("MPDataset_MPDS2018b.csv")
+```
+
+
+```{r}
+country_select <- c("Denmark", "Germany", "Netherlands", "United Kingdom")
+
+mp <- mp_raw %>% 
+  mutate(decade = round(date / 1000) * 10) %>% 
+  filter(countryname %in% country_select)
+```
+
+
+```{r, eval=FALSE}
+pl_dt <- 
+  mp %>% 
+  mutate(morality = per603 + per604) %>% 
+  group_by(countryname, decade) %>% 
+  summarise(morality = mean(morality))
+
+ggplot(pl_dt, aes(x = decade, y = morality)) +
+  geom_line() +
+  facet_wrap(~ countryname)
+```
+
+```{r}
+pl_dt <- 
+  mp %>% 
+  group_by(countryname, decade) %>% 
+  summarise_at(c("per603", "per604"), mean) %>% 
+  gather(variable, share, -countryname, -decade)
+
+ggplot(pl_dt, aes(x = decade, y = share, colour = variable)) +
+  geom_line() +
+  facet_wrap(~ countryname)
+```
+
+#### Germany
+
+```{r}
+party_select <- c("CDU/CSU", "SPD", "FDP", "Greens")
+
+pl_dt <- 
+  mp_raw %>% 
+  mutate(partyabbrev = ifelse(party %in% c(41111, 41112, 41113),
+                              "Greens",
+                              partyabbrev)) %>% 
+  filter(
+    countryname == "Germany",
+    partyabbrev %in% party_select
+    ) %>% 
+  mutate(
+    year = floor(date / 100),
+    partyabbrev = fct_relevel(partyabbrev, party_select)
+    ) %>% 
+  select(year, party=partyabbrev, per603, per604) %>% 
+  gather(variable, share, -year, -party)
+
+ggplot(pl_dt, aes(x = year, y = share, colour = variable)) +
+  geom_line() +
+  facet_wrap(~ party)
+```
+
+
+#### Corpus examples
+
+```{r}
+mp_partyname <- 
+  mp_raw %>% 
+  select(party, partyname) %>% 
+  distinct(party, .keep_all = TRUE)
+
+cp_all <- 
+  read_csv("mp-corpus/mp-morality.csv") %>% 
+  left_join(mp_partyname)
+```
+
+
+```{r, eval=FALSE}
+# examples for exercise campaign posters
+cp_all %>% 
+  filter(country %in% c("Germany", "United Kingdom")) %>% 
+  group_by(country, code) %>% 
+  sample_n(5) %>% 
+  arrange(year) %>% 
+  mutate(example = glue("{statement} --- {year}, {partyabbrev}, {code}")) %>% 
+  pull(example)
+```
+
+
+```{r}
+cp_all %>% 
+  group_by(country, partyname) %>% 
+  summarise(n_entries = n()) %>% 
+  DT::datatable()
+
+cp_all %>% DT::datatable()
+```
+
