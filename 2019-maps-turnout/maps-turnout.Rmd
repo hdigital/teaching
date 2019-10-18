@@ -1,0 +1,135 @@
+---
+title: "Turnout maps"
+output:
+  html_document:
+    code_folding: hide
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+
+```{r options, include=FALSE}
+knitr::opts_chunk$set(
+  # results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+  )
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+#### Sources
+
+* __Turnout__
+   + International IDEA – [Voter Turnout Database](https://www.idea.int/data-tools/vt-advanced-search)
+   + [Federal Statistical Office (Destatis)](https://www-genesis.destatis.de/)
+   + [Bremen Statistical Office](http://www.statistik-bremen.de/soev/statwizard_step1.cfm)
+* __Maps__
+   + [Natural Earth](https://www.naturalearthdata.com/)
+   + [Bremen Statistical Office](http://www.statistik-bremen.de/soev/statwizard_step1.cfm)
+
+```{r}
+library(tidyverse)
+library(sf)
+
+ggplot2::theme_set(theme_bw())
+
+map_global <- read_rds("1-maps/ne-worldmap.rds")
+vote_global <- read_csv("3-data-edit/global-idea-turnout.csv")
+# use country codes package to improve country name matching
+```
+
+## World
+
+Robinson projection
+
+```{r}
+dt_global <- 
+  map_global %>% 
+  left_join(vote_global, by = c("name" = "country")) %>% 
+  mutate(turnout = cut_number(round(turnout), 4))
+
+pl_global <- 
+  ggplot(dt_global) + 
+  geom_sf(aes(fill = turnout)) +
+  coord_sf(crs = "+proj=robin", xlim = c(-12000000, 14500000)) +  # projection and limits
+  scale_fill_brewer(na.value="grey95")
+
+print(pl_global)
+```
+
+## Europe
+
+Lambert Conformal Conic projection
+
+```{r}
+dt_euro <- dt_global %>% filter(continent == "Europe")
+
+pl_euro <- 
+  ggplot(dt_euro) + 
+  geom_sf(data = map_global, fill = "grey80") +
+  geom_sf(aes(fill = turnout)) +
+  coord_sf(crs = "+proj=lcc +lat_0=31 +lon_0=10",  # projection with parameters
+           xlim = c(-1700000, 1800000), ylim = c(600000, 4000000)) +  # set map limits
+  scale_fill_brewer(na.value="grey95")
+
+print(pl_euro)
+```
+
+## Germany
+
+Lambert Conformal Conic projection
+
+```{r}
+map_deu <- read_rds("1-maps/ne-german-states.rds")
+vote_deu <- read_csv("3-data-edit/german-states-2017.csv")
+
+dt_deu <- 
+  map_deu %>% 
+  left_join(vote_deu, by = c("name" = "state")) %>% 
+  mutate(turnout = cut_number(round(turnout), 4))
+
+pl_deu <- 
+  ggplot(dt_deu) + 
+  geom_sf(aes(fill = turnout)) +
+  coord_sf(crs = "+proj=lcc +lon_0=9") +  # projection with parameter
+  scale_fill_brewer(na.value="grey95")
+
+print(pl_deu)
+```
+
+## Bremen
+
+Mercator projection (default)
+
+```{r}
+map_hb <- read_rds("1-maps/bremen-districts.rds")
+vote_hb <- read_csv("3-data-edit/bremen-2017.csv")
+
+dt_hb <- 
+  map_hb %>% 
+  left_join(vote_hb, by = "ortsteil") %>% 
+  mutate(turnout = cut_number(round(wahlbeteiligung), 4))
+
+pl_hb <- 
+  ggplot(dt_hb) + 
+  geom_sf(aes(fill = turnout)) +
+  scale_fill_brewer(na.value="grey95")
+
+print(pl_hb)
+```
+```{r}
+pl_all <- cowplot::plot_grid(pl_global, pl_euro, pl_deu, pl_hb, labels = "AUTO")
+ggsave("turnout.png", pl_all, width = 8, height = 6)
+```
+

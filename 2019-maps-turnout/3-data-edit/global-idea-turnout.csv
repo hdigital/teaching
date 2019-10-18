@@ -1,0 +1,208 @@
+country,year,turnout
+Afghanistan,2018,45.23
+Albania,2017,46.76
+Algeria,2017,37.09
+Andorra,2019,68.33
+Angola,2017,76.13
+Anguilla,2015,73.24
+Antigua and Barbuda,2014,90.27
+Argentina,2017,76.74
+Armenia,2018,48.63
+Aruba,2017,83.96
+Australia,2016,91.01
+Austria,2017,80
+Azerbaijan,2015,55.54
+Bahamas,2017,86.91
+Bahrain,2018,67
+Bangladesh,2018,80
+Barbados,2018,60.29
+Belarus,2016,74.68
+Belgium,2014,89.37
+Belize,2015,72.69
+Benin,2015,65.91
+Bermuda,2017,72.98
+Bhutan,2018,71.46
+Bolivia,2014,87.45
+Bosnia and Herz.,2018,54.03
+Botswana,2014,84.75
+Brazil,2018,79.5
+Bulgaria,2017,53.85
+Burkina Faso,2015,60.13
+Burundi,2015,74.32
+Cambodia,2018,83.02
+Cameroon,2013,76.79
+Canada,2015,68.28
+Cape Verde,2016,65.93
+Cayman Islands,2017,74.06
+Central African Republic,2016,44.28
+Chad,2011,56.6
+Chile,2017,46.53
+Colombia,2018,49
+Comoros,2015,71.35
+"Congo, Democratic Republic of",2018,45.4
+Cook Islands,2018,79.12
+Costa Rica,2018,65.56
+Cote d'Ivoire,2016,34.1
+Croatia,2016,52.59
+Cuba,2018,85.65
+Cyprus,2016,66.74
+Czech Rep.,2017,60.84
+Denmark,2015,85.89
+Djibouti,2018,61.78
+Dominica,2014,56.31
+Dominican Republic,2016,67.77
+Ecuador,2017,81.74
+Egypt,2015,28.27
+El Salvador,2018,47.96
+Equatorial Guinea,2017,84.01
+Estonia,2019,63.67
+Ethiopia,2015,93.22
+Faroe Islands,2008,89.5
+Fiji,2018,71.92
+Finland,2019,68.73
+France,2017,42.64
+Gabon,2018,58.63
+Gambia,2017,42
+Georgia,2016,51.94
+Germany,2017,76.15
+Ghana,2016,67.55
+Gibraltar,2015,70.77
+Greece,2015,63.94
+Greenland,2014,72.95
+Grenada,2018,73.65
+Guatemala,2015,71.13
+Guinea,2013,63.53
+Guinea-Bissau,2019,84.69
+Guyana,2015,72.19
+Haiti,2015,17.82
+Honduras,2017,59.49
+Hungary,2018,69.67
+Iceland,2016,79.18
+India,2014,66.4
+Indonesia,2014,75.11
+"Iran, Islamic Republic of",2016,60.09
+Iraq,2018,44.85
+Ireland,2016,65.09
+Israel,2019,67.22
+Italy,2018,72.93
+Jamaica,2016,48.37
+Japan,2014,52.66
+Jordan,2016,36.13
+Kazakhstan,2016,77.1
+Kenya,2017,77.37
+Kiribati,2007,67.54
+Kiribati,2016,
+"Korea, Republic of",2016,58.03
+Kosovo,2017,41.3
+Kuwait,2016,70
+Kyrgyzstan,2015,56.62
+Lao People's Dem. Republic,2016,97.94
+Latvia,2018,54.58
+Lebanon,2018,49.7
+Lesotho,2017,46.37
+Liberia,2017,72.49
+Libya,2014,41.74
+Liechtenstein,2017,77.82
+Lithuania,2016,50.64
+Luxembourg,2018,89.66
+Macedonia,2016,66.79
+Madagascar,2013,50.72
+Malawi,2014,70.07
+Malaysia,2018,82.32
+Maldives,2019,74.85
+Mali,2013,37.24
+Malta,2017,92.06
+Marshall Islands,2015,45.85
+Mauritania,2018,72.46
+Mauritius,2014,74.41
+Mexico,2018,63.21
+"Micronesia, Federated States of",2017,33.11
+Moldova,2019,51.98
+Monaco,2018,70.35
+Mongolia,2016,73.58
+Montenegro,2016,73.41
+Montserrat,2014,71.06
+Morocco,2016,42.98
+Mozambique,2014,48.84
+Myanmar,2015,69.72
+Namibia,2014,72
+Nauru,2016,82.48
+Nepal,2017,68.67
+Netherlands,2017,81.93
+Netherlands Antilles,2010,65.41
+New Zealand,2017,79.75
+Nicaragua,2016,63.54
+Niger,2016,66.27
+Nigeria,2015,43.65
+Nigeria,2019,
+Norway,2017,78.22
+Oman,2015,56.66
+Pakistan,2018,50.14
+Palau,2016,62.7
+Panama,2014,75.19
+Papua New Guinea,2012,76.89
+Papua New Guinea,2017,
+Paraguay,2018,60.88
+Peru,2016,81.88
+Philippines,2016,81.95
+Philippines,2019,
+Poland,2015,50.92
+Portugal,2015,55.84
+Republic of The Congo (Brazzaville),2017,42.23
+Romania,2016,37.79
+Russia,2016,47.88
+Rwanda,2018,93.04
+Saint Kitts and Nevis,2015,72.19
+Saint Lucia,2016,53.45
+Saint Vincent and The Grenadines,2015,73.39
+Samoa,2016,73.06
+San Marino,2016,59.66
+Sao Tome and Principe,2018,80.65
+Senegal,2017,53.66
+Serbia,2016,56.07
+Seychelles,2016,87.61
+Sierra Leone,2018,84.2
+Singapore,2015,93.56
+Slovakia,2016,59.82
+Slovenia,2018,52.64
+Solomon Islands,2014,89.93
+Solomon Islands,2010,
+Somalia,1984,99.86
+South Africa,2014,73.48
+Spain,2016,69.84
+Sri Lanka,2015,77.66
+State of Palestine,2006,77.7
+Sudan,2015,46.4
+Suriname,2015,72.72
+Sweden,2018,87.18
+Switzerland,2015,48.51
+Syrian Arab Republic,2016,57.56
+Taiwan,2016,66.25
+Tajikistan,2015,82
+"Tanzania, United Republic of",2015,62.68
+Thailand,2019,74.69
+Timor-Leste,2018,80.98
+Togo,2018,59.25
+Tonga,2017,67
+Trinidad and Tobago,2015,66.84
+Tunisia,2014,67.72
+Turkey,2018,86.22
+Turkmenistan,2018,91.69
+Tuvalu,2002,79.99
+Tuvalu,2010,
+Tuvalu,2015,
+Uganda,2016,67.61
+Ukraine,2014,52.42
+United Kingdom,2017,68.93
+United States,2016,65.44
+Uruguay,2014,89.62
+Uzbekistan,2014,88.51
+Vanuatu,2016,56.47
+Venezuela,2015,73.76
+Viet Nam,2016,99.26
+"Virgin Islands, British",2019,64.64
+Yemen,2003,74.98
+"Yugoslavia, FR/Union of Serbia and Montenegro",2003,58.75
+"Yugoslavia, SFR (1943-1992)",1992,56.07
+Zambia,2016,56.03
+Zimbabwe,2018,83.1
