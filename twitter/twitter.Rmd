@@ -3,7 +3,7 @@ title: "Twitter wordcloud"
 author: "Holger Doering"
 date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
 output:
-  html_document:
+  html_notebook:
     code_folding: hide
 ---
 
@@ -23,14 +23,14 @@ if(require(knitr)) {
 ```{r packages}
 # Load packages and install missing packages
 
-pkgs <- c("tidyverse", "twitteR", "quanteda")
+pkgs <- c("tidyverse", "twitteR", "quanteda", "quanteda.textplots")
 reqs <- vapply(pkgs, require, character.only = TRUE, FUN.VALUE = logical(1))
 if(any(! reqs)) { 
   install.packages(pkgs[!reqs], repos = "http://cran.r-project.org")  
 }
 ```
 
-```{r twitter-access}
+```{r twitter-access, message=FALSE}
 # Setting up Twitter access ----
 
 # ADD YOUR PERSONAL TWITTER API ACCESS (OAuth access token)
@@ -72,7 +72,7 @@ tweets <- get_tweets(search_term, timeline = timeline)
 tw_df <- twListToDF(tweets)
 ```
 
-```{r twitter-dataset}
+```{r twitter-dataset, message=FALSE}
 # Write results into dataset file ----
 
 file_name <- "tweets.csv"
@@ -91,15 +91,16 @@ write_csv(tw_out, file_name, na = "")
 ```{r wordcloud}
 # Analyse and visualise results ----
 
-tw_cp <- corpus(
-  tw_df %>% select(id, created, text), 
-  text_field = "text",
-  docvars = "created"
+tw_cp <- 
+  corpus(
+    tw_df %>% select(id, created, text), 
+    text_field = "text",
+    docvars = "created"
   )
 
 tw_dfm <- 
   tw_cp %>% 
-  tokens(remove_punct = TRUE, remove_twitter = TRUE) %>% 
+  tokens(remove_punct = TRUE) %>% 
   tokens_remove(phrase(c(stopwords("en"), "http*", "news","t.co"))) %>% 
   dfm()
 

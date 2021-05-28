@@ -18,7 +18,7 @@ twitteR::setup_twitter_oauth(
 
 # Search Twitter ----
 
-search_term <- "brexit"
+search_term <- "covid"
 tweets <- twitteR::searchTwitter(search_term, n = 250)
 # tweets <- twitteR::userTimeline(search_term, n = 250)
 tw_df <- twListToDF(tweets)
@@ -26,15 +26,12 @@ tw_df <- twListToDF(tweets)
 
 # Text analysis ----
 
-tw_cp <- corpus(
-  tw_df %>% select(id, created, text), 
-  text_field = "text",
-  docvars = "created"
-  )
+tw_cp <- corpus(tw_df %>% select(id, created, text),
+                text_field = "text")
 
 tw_dfm <- 
   tw_cp %>% 
-  tokens(remove_punct = TRUE, remove_twitter = TRUE) %>% 
+  tokens(remove_punct = TRUE) %>% 
   tokens_remove(phrase(c(stopwords("en"), search_term, "http*", "news", "rt", "t.co"))) %>% 
   dfm()
 
