@@ -1,0 +1,173 @@
+---
+title: "STM2 Regression"
+author: "Holger Döring"
+output: 
+  flexdashboard::flex_dashboard:
+  orientation: rows
+social: menu
+source_code: embed
+runtime: shiny
+---
+  
+```{r global, include=FALSE}
+library(tidyverse)
+library(broom)
+library(skimr)
+library(shiny)
+
+param_const <- 500
+param_alter <- 25
+
+n <- 1000
+sd_einkommen <-  100
+```
+
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+  
+```{r}
+numericInput(
+  "n",
+  "Beobachtungen",
+  1000,
+  min = 10,
+  max = 10000,
+  step = 10,
+  width = NULL
+)
+
+numericInput(
+  "sd",
+  "Standard-Abweichung",
+  200,
+  min = 10,
+  max = 1000,
+  step = 10,
+  width = NULL
+)
+
+actionButton("newButton", "nochmal")
+```
+
+```{r}
+dt_reactive <- 
+  reactive({
+    input$newButton  # run again
+    
+    n_max <- 100000
+    n <- ifelse(input$n <= n_max, input$n, n_max)
+    
+    tibble( 
+      id = 1:n,
+      alter = runif(n, min = 20, max = 60) %>% round(1),
+      einkommen_linear = round(param_const + param_alter*alter)
+    ) %>% 
+      mutate(einkommen = round(einkommen_linear + rnorm(n, sd = input$sd))) %>% 
+      arrange(alter)
+  })
+
+fit_reactive <- 
+  reactive({
+    lm(einkommen ~ alter, data = dt_reactive())
+  })
+
+input_reactive <- 
+  reactive({
+    input
+  })
+```
+
+
+Column
+-----------------------------------------------------------------------
+
+
+### Informationen
+
+__Geschätztes Modell__
+
+```{r}
+get_equation <- function() {
+  paste(
+    "Einkommen =",
+    round(tidy(fit_reactive())[["estimate"]][1], 2),
+    "+",
+    round(tidy(fit_reactive())[["estimate"]][2], 2),
+    "* Alter"
+  )
+}
+```
+
++ `r renderText(get_equation())`
+
+
+__Modell simulierte Daten__
+
++ Einkommen = 500 + 25 * Alter +  _Fehler_
+  + Standard-Abweichung _Fehler_ = `r renderText(input_reactive()[["sd"]])` (normal-verteilt)
+  + `r renderText(dt_reactive() %>% nrow())` Beobachtungen
+
+
+
+### Modell: Parameter
+
+```{r}
+renderTable(
+  tidy(fit_reactive())
+  )
+```
+
+### Modell: Zusammenfassung 
+
+```{r}
+renderTable(
+  glance(fit_reactive()) %>% 
+    select(r.squared, adj.r.squared, statistic, p.value, df, nobs) %>% 
+    mutate_if(is.numeric, round, 2)
+  )
+```
+
+
+### Deskriptive Statistik
+
+```{r}
+renderTable(
+  skim(
+    dt_reactive()) %>% 
+    select(
+      variable = skim_variable,
+      mean = numeric.mean,
+      sd = numeric.sd,
+      min = numeric.p0,
+      max = numeric.p100,
+      hist = numeric.hist
+      ) %>% 
+    filter(variable != "id")
+)
+```
+
+Column {.tabset}
+-------------------------------------
+### Grafik
+
+```{r}
+renderPlot(
+  # build plot
+  ggplot(dt_reactive(), aes(x = alter, y = einkommen)) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = lm, se = FALSE) +
+    lims(x = c(20, 60), y = c(0, 3000))
+)
+
+```
+
+### Daten
+
+```{r}
+DT::renderDataTable(
+  dt_reactive(),
+  options = list(pageLength = 20)
+)
+```
+

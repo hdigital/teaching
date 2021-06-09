@@ -1,0 +1,393 @@
+---
+title: "Regressions-Diagnose · 🔍"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+
+
+```{r, message=FALSE}
+library(broom)        # tidy model data
+library(performance)  # regression diagnostic
+library(estimatr)     # robust standard-errors
+
+library(tidyverse)
+ggplot2::theme_set(theme_minimal())
+```
+
+
+```{r, message=FALSE}
+##  tidy lm model results with broom
+
+tidy_lm <- function(fit) {
+  tidy(fit) %>% mutate_if(is.numeric, round, 2)
+}
+
+glance_lm <- function(fit) {
+  glance(fit) %>% 
+    select(r.squared, adj.r.squared, statistic, p.value, df, nobs) %>% 
+    mutate_if(is.numeric, round, 2)
+}
+```
+
+
+# Wunsch I · Perfekte Daten
+
+Eine Fee 🧚 die Wünsche 🧞 erfüllt?
+
+![](bilder/fair.jpg)
+
+Den Wunsch 🪄 nach perfekten Daten 📈 erfüllt sie nicht 😥.
+ 
+Die Fee 🧚 überlegt, nutzt [__R__](https://education.rstudio.com/learn/beginner/) 👩‍💻 und schafft fast perfekte Daten 📈.
+
+```{r}
+param_const <- 500
+param_alter <- 25
+
+n <- 1000
+sd_einkommen <-  100
+
+dt_raw <- 
+  tibble( 
+    id = 1:n,
+    alter = seq(20, 60, length.out = n) %>% round(2),
+    einkommen_linear = round(param_const + param_alter*alter)
+    ) %>% 
+  mutate(einkommen = round(einkommen_linear + rnorm(n, sd = sd_einkommen)))
+```
+
+
+$$ Einkommen_{ID} = 500 + 25 \cdot Alter_{ID} \: + ( \: Fehler_{ID} \: )$$
+
+```{r}
+ggplot(dt_raw, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = lm)
+```
+
+
+# Wunsch II · Diagnose für SoWis
+
+Die Studierenden 🙇🙇🙇🙇 hatten einen eigenen Wunsch 🪄 an die Fee 🧚.
+
+Kannst Du uns Regressions-Diagnose 📈 mit einer sozialwissenschaftlichen Geschichte 📚 erklären?
+
+![](bilder/fair.jpg)
+
+## Daten Fee
+
+Wir stellen uns Postbeamte 📯 vor die regelmäßig Lohnerhöhungen 💰 strikt nach dem Senioritätsprinzip 🥸 erhalten. 
+
+Wir haben also ein Modell 📈 bei dem das __Einkommen__ 💰 vom __Alter__ 🧑👴 abhängt.
+
+![](bilder/postbeamte.jpg)
+
+Das wahre Einkommen 💰 (`einkommen_linear`) ist uns bekannt und unsere beobachteten Daten 🕵️ (`einkommen`) weichen davon normal-verteilt 🧮 ab
+
+So hat die Fee 🧚 uns die Daten 📊 gegeben.
+
+```{r}
+ggplot(dt_raw, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+  geom_jitter(aes(y = einkommen_linear),
+              width = 0.1, alpha = 0.5,
+              colour = "darkgreen", shape = ".")
+
+DT::datatable(dt_raw)
+```
+
+## Modell (fast) perfekt
+
+Wir bekommen schöne Ergebnisse bei der Schätzung des Modells. 😄
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt_raw)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+
+## Annahmen (1-7)
+
+1. korrekte Spezifikation (Linearität)
+2. Erwartungswert der Residuen (lokal) = 0
+3. Normalverteilte Residuen
+4. Varianzhomogenität (gleichmäßige Streuung Residuen)
+5. Berücksichtigung einflussreicher Fälle (keine Ausreisser)
+6. _keine_ Multikollinearität (geringe Korrelation unabhängiger Variablen)
+7. _keine_ Autokorrelation der Residuen (insbes. Zeitreihen)
+
+
+## Korrekte Spezifikation
+
+### Dritt-Variablen
+
+![](bilder/brieftraeger-frauen.jpg)
+
+Briefträger ✉️ arbeiten oft nur halbtags 🕐 und verdienen 💰 dann auch nur die Hälfte.
+
+```{r}
+dt <-
+  dt_raw %>% 
+  mutate(einkommen = if_else(id %% 3 == 0, einkommen/2 + rnorm(n, sd = 50), einkommen),
+         halbtags = if_else(id %% 3 == 0, "ja", "nein") %>% fct_relevel("ja", after = Inf))
+
+ggplot(dt, aes(x = alter, y = einkommen, colour = halbtags)) +
+  geom_point(alpha = 0.2)
+```
+
+Ohne Dritt-Variable 😟
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+Mit Dritt-Variable 🙂
+
+```{r}
+fit <- lm(einkommen ~ alter + halbtags, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+Noch besser mit Dritt-Variable und Interaktions-Effekt 😃
+
+```{r}
+fit <- lm(einkommen ~ alter*halbtags, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+### Funktionale Form
+
+![](bilder/bundespost.jpg)
+
+Bei der Bundespost 📯 wurde eine Bezahlung 💰 nach Humankapital eingeführt. 
+
+Es wurde erkannt, dass bei jungen Beamten 🧑 die Produktivität stärker wächst als bei Älteren 🧓. Daher erhalten sie höhere Lohnzuwächse 💰.
+
+```{r}
+dt <-
+  dt_raw %>% 
+  mutate(einkommen_polynom = -300 + 80*alter - 0.725*alter^2,
+         einkommen = einkommen_polynom + rnorm(n, sd = sd_einkommen))
+
+ggplot(dt, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+    geom_jitter(aes(y = einkommen_polynom),
+                width = 0.1, alpha = 0.5,
+                colour = "darkblue", shape = ".")
+```
+Ein lineares Modell ist falsch spezifiziert. 😟 Die Regressions-Diagnose zeigt dies. ☝️
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+Korrekt ist ein Modell mit einem Polynom (hier einem quadratischem Term). 😃
+
+```{r}
+fit <- lm(einkommen ~ alter + I(alter^2), data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+( Den R Hinweis auf Multi-Kollinearität ignorieren wir einfach. Natürlich gibt es einen Zusammenhang zwischen `alter` und dem quadrierten `alter^2`. )
+
+
+## Varianzhomogenität
+
+![](bilder/minister.jpg)
+
+Bei der Post 📯 haben hohe Beamte und Minster ein höheres Einkommen 💰 als einfache Beamte. Aber nicht alle werden hohe Beamte 🧑‍💼 oder [Post-Minister](https://de.wikipedia.org/wiki/Christian_Schwarz-Schilling) 🏤.
+
+```{r}
+dt <- dt_raw %>% mutate(einkommen = einkommen_linear + id/500 * rnorm(n, sd = sd_einkommen))
+
+ggplot(dt, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+    geom_jitter(aes(y = einkommen_linear),
+                width = 0.1, alpha = 0.5,
+                colour = "darkgreen", shape = ".")
+```
+
+Im Standard-Modell erhalten wir verzerrte Standard-Fehler. 😟
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+Besser ist ein Modell mit _robusten_ 💪 Standard-Fehlern. 😄
+
+```{r}
+fit <- lm_robust(einkommen ~ alter, data = dt)
+tidy_lm(fit)
+glance(fit) %>% mutate_if(is.numeric, round, 2) 
+```
+
+## Multikollinearität
+
+![](bilder/brieftraeger-gruppe.jpg)
+
+Ältere 👴👵 Postbeamte 📯 sind kleiner als Jüngere 👧👦.
+
+```{r}
+dt <- dt_raw %>% mutate(groesse_cm = round(seq(180, 160, length.out = n) + rnorm(n, sd = 2.5), 3))
+
+ggplot(dt, aes(x = alter, y = groesse_cm)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = lm)
+```
+Es gibt dann auch einen Zusammenhang 📉 zwischen `groesse_cm` 👵 und `einkommen` 💰, natürlich keinen kausalen ⚙️.
+
+```{r}
+ggplot(dt, aes(x = groesse_cm, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = lm)
+```
+
+```{r}
+fit <- lm(einkommen ~ groesse_cm, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+```
+
+Nehmen wir `alter` 👵 und `groesse_cm` 📐 in einem Modell auf 📉 haben wir Multikollinearität 🔗 😟
+
+```{r}
+fit <- lm(einkommen ~ alter + groesse_cm, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+
+Multikollinearität im Modell 📉  erkennen 🕵️ wir auch  an der sehr starken Korrellation der unabhängigen Variablen.
+
+```{r}
+dt %>% 
+  select(alter, einkommen) %>% 
+  cor() %>% 
+  as_tibble() %>% 
+  mutate_all(round, 2)
+```
+
+
+## Ausreisser
+
+![](bilder/fernmeldeamt.jpg)
+
+Bei der Datenübertragung 📡 gab es einen Fehler ⚠️ und die letzte Ziffer 🔢 wurde bei einigen Gehaltsangaben 💰 entfernt. 
+
+```{r}
+id_random <- runif(80, min = 1, max = n) %>% round()
+
+dt <-
+  dt_raw %>% 
+  mutate(einkommen = if_else(id %in% id_random, round(einkommen/10), einkommen))
+
+ggplot(dt, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2)
+```
+
+Wir erhalten eine verzerrte Schätzung. 😟
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+Die falschen Beobachtungen müssen wir entfernen (oder korrigieren). 😃
+
+```{r}
+dt_tmp <- dt %>% filter(einkommen > 500)
+
+fit <- lm(einkommen ~ alter, data = dt_tmp)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+
+
+## Autokorrelation
+
+![](bilder/telefonzentrale.jpg)
+
+Die Postbeamten 📯 wurden 2010 und 2020 📅 nach ihrem Einkommen 💰 befragt. ☎️
+
+```{r}
+dt_tmp <-
+  dt_raw %>% 
+  mutate(einkommen = round(einkommen - param_alter*10 + rnorm(n, sd = 10)),
+         alter = alter - 10,
+         befragung = 2010) %>% 
+  filter(alter >= 20)
+
+dt <-
+  dt_raw %>% 
+  mutate(befragung = 2020) %>% 
+  rbind(dt_tmp) %>% 
+  arrange(id, befragung) %>% 
+  relocate(befragung, .after = id)
+
+DT::datatable(dt %>% filter(id > 500))  # Daten ab ID 500 um Panel-Struktur zu verdeutlichen 
+```
+
+Postbeamte 📯 die 2010  📅 älter als 50 waren sind inzwischen in Pension 👵 und haben an der 2020 Befragung ☎️ nicht mehr teilgenommen.
+
+```{r}
+dt_tmp <- dt %>% mutate(befragung = factor(befragung))
+
+ggplot(dt_tmp, aes(x = alter, y = einkommen, colour = befragung)) +
+  geom_point(alpha = 0.2)
+```
+
+Im Modell (n = 1750) sind Beobachtungen (und Residuen) nicht mehr unabhängig. 😟 Wir haben ja viele zweimal befragt. ☎️
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt_tmp)
+tidy_lm(fit)
+glance_lm(fit)
+check_model(fit)
+```
+
+# Aufgabe
+
+![](bilder/radioquiz.jpg)
+
+Diskutieren Sie 🙇🙇🙇 die Regressions-Annahmen  📈  und zeigen Sie ob und wie Verletzungen 🏥 der Annahmen erkannt 🕵️  werden können.
+
+---
+
+# Quellen
+
++ <https://commons.wikimedia.org/wiki/File:SophieAndersonTakethefairfaceofWoman.jpg>
++ <https://commons.wikimedia.org/wiki/File:Bundesarchiv_Bild_183-63142-0001,_Cottbus,_Brieftr%C3%A4gerinnen.jpg>
++ <https://commons.wikimedia.org/wiki/File:Bundesarchiv_Bild_183-1990-0924-020,_Gera,_Protest_von_Post-Gewerkschaftern.jpg>
++ <https://commons.wikimedia.org/wiki/File:Bundesarchiv_Bild_183-U0205-0010,_Berlin,_Tag_des_Post-_und_Fernmeldewesens,_Vorbereitung.jpg>
++ <https://commons.wikimedia.org/wiki/File:Bundesarchiv_Bild_183-59111-0002,_Berlin,_Postamt_N_58,_Brieftr%C3%A4ger.jpg>
++ <https://commons.wikimedia.org/wiki/File:Telefonzentrale_bei_der_2.Infanteriedivision_(BildID_15705125).jpg>
++ <https://commons.wikimedia.org/wiki/File:Radioquiz_%22Allein_gegen_alle%22_aus_dem_Ratssaal_(Kiel_45.567).jpg>
+
+---
+
+![](bilder/fair.jpg)

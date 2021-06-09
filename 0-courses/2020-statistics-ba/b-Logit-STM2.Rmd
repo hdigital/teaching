@@ -1,0 +1,248 @@
+---
+title: "Logistische Regression · 🔍"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+
+
+```{r, message=FALSE}
+library(tidyverse)
+
+library(broom)     # tidy model data
+library(patchwork) # combine ggplots
+library(ggthemes)  # ggplot Stata theme
+library(estimatr)  # robust standard-errors
+```
+
+
+```{r, message=FALSE}
+##  tidy lm model results with broom (and ggplot)
+
+tidy_lm <- function(fit) {
+  tidy(fit) %>% mutate_if(is.numeric, round, 2)
+}
+
+glance_lm <- function(fit) {
+  glance(fit) %>% 
+    select(r.squared, adj.r.squared, statistic, p.value, df, nobs) %>% 
+    mutate_if(is.numeric, round, 2)
+}
+
+plot_lm <- function(fit,   bw = 25) {
+  dt_pl<-  
+    augment(fit) %>% 
+    mutate(einkommen_geschaetzt = .fitted,
+           residuen = .resid)
+
+  pl1 <- 
+    ggplot(dt_pl, aes(x = residuen)) +
+    geom_histogram(binwidth = bw, colour = "black", fill = "grey") +
+    stat_function(
+      fun = function(x) dnorm(x, mean = mean(dt_pl$residuen),
+                              sd = sd(dt_pl$residuen))
+                        * bw * nrow(dt_pl),
+      colour = "blue"
+    ) +
+   theme_stata()
+
+  pl2 <- 
+    ggplot(data = dt_pl, aes(x = einkommen_geschaetzt, y = residuen)) +
+    geom_point(alpha = 0.2) +
+    geom_smooth(se = FALSE) +
+    theme_stata()
+
+  pl1 + pl2 + plot_layout(widths = c(2, 3))
+}
+```
+
+
+# Regression (Wiederholung)
+
+Fast perfekte Daten 📈 einer Fee 🧚 .
+
+![](bilder/fair.jpg)
+
+```{r}
+param_const <- 500
+param_alter <- 25
+
+n <- 1000
+sd_einkommen <-  100
+
+dt_raw <- 
+  tibble( 
+    id = 1:n,
+    alter = seq(20, 60, length.out = n) %>% round(2),
+    einkommen_linear = round(param_const + param_alter*alter)
+    ) %>% 
+  mutate(einkommen = round(einkommen_linear + rnorm(n, sd = sd_einkommen)))
+```
+
+
+$$ Einkommen_{ID} = 500 + 25 \cdot Alter_{ID} \: + ( \: Fehler_{ID} \: )$$
+
+```{r}
+ggplot(dt_raw, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = lm) +
+  theme_stata()
+```
+
+Wir stellen uns Postbeamte 📯 vor die regelmäßig Lohnerhöhungen 💰 strikt nach dem Senioritätsprinzip 🥸 erhalten. 
+
+Wir haben also ein Modell 📈 bei dem das __Einkommen__ 💰 vom __Alter__ 🧑👴 abhängt.
+
+![](bilder/postbeamte.jpg)
+
+Das wahre Einkommen 💰 (`einkommen_linear`) ist uns bekannt und unsere beobachteten Daten 🕵️ (`einkommen`) weichen davon normal-verteilt 🧮 ab
+
+So hat die Fee 🧚 uns die Daten 📊 gegeben.
+
+```{r}
+ggplot(dt_raw, aes(x = alter, y = einkommen)) +
+  geom_point(alpha = 0.2) +
+  geom_jitter(aes(y = einkommen_linear),
+              width = 0.1, alpha = 0.5,
+              colour = "darkgreen", shape = ".") +
+  theme_stata()
+
+DT::datatable(dt_raw)
+```
+
+## Modell (fast) perfekt
+
+Wir bekommen schöne Ergebnisse bei der Schätzung des Modells. 😄
+
+```{r}
+fit <- lm(einkommen ~ alter, data = dt_raw)
+tidy_lm(fit)
+glance_lm(fit)
+plot_lm(fit)
+```
+
+## Annahmen (1-7)
+
+1. korrekte Spezifikation (Linearität)
+2. Erwartungswert der Residuen (lokal) = 0
+3. Normalverteilte Residuen
+4. Varianzhomogenität (gleichmäßige Streuung Residuen)
+5. Berücksichtigung einflussreicher Fälle (keine Ausreisser)
+6. _keine_ Multikollinearität (geringe Korrelation unabhängiger Variablen)
+7. _keine_ Autokorrelation der Residuen (insbes. Zeitreihen)
+
+# Binäre abhängige Variablen
+
+Postbeamte 📯 sammeln natürlich auch gerne Briefmarken 📨. Am Anfang nur einige von ihnen (ca. 20%). Dann greift die Sozialisation 🧑‍🤝‍🧑 und zwischen 30 und 40 Jahren beginnen sehr viele mit dem Sammeln der Briefmarken. Von den über 40-jährigen sind es dann fast alle (ca. 90%)
+
+![](bilder/briefmarken.jpg)
+
+
+```{r}
+dt <- 
+  dt_raw %>% 
+  mutate(
+    prob = case_when(alter < 30 ~ 0.2, alter >= 40 ~ 0.9, TRUE ~ 0.2 + (alter-30) * 0.07),
+    sammler = map_int(prob, ~ rbinom(1, 1, prob = .x))
+    )
+```
+
+
+```{r}
+dt2 <- 
+  dt %>% 
+  mutate(
+    alter_10 = ifelse(alter >= 60, 59, alter),
+    alter_10 = factor(alter_10%/%10 * 10),
+    Sammler = factor(sammler, c(1, 0), c("ja", "nein"))
+   )
+
+ggplot(dt2, aes(x = alter_10, fill = Sammler)) +
+  geom_histogram(stat = "count") +
+  theme_stata()
+```
+## Lineares Wahrscheinlichkeits-Modell
+
+Ein linerares Regressions-Modell 📈 erfüllt bei einer binären abhängigen Variablen die Modell-Annahmen nicht mehr 😟. 
+
+```{r}
+ggplot(dt, aes(x = alter, y = sammler)) +
+  geom_jitter(height = 0.025, alpha = 0.2) +
+  geom_point(aes(y = prob), alpha = 0.5, colour = "darkgreen", shape = ".") +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(breaks = seq(0, 1, 0.25)) +
+  theme_stata()
+```
+
+```{r}
+fit <- lm(sammler ~ alter, data = dt)
+tidy_lm(fit)
+glance_lm(fit)
+plot_lm(fit)
+```
+
+## Logit-Modell
+
+Besser 😀 geht es mit einer [Logistischen Regression](https://de.wikipedia.org/wiki/Logistische_Regression).
+
+```{r}
+fit <- glm(sammler ~ alter, data = dt, family = binomial(link = "logit"))
+tidy_lm(fit)
+
+dt <- augment(x=fit, newdata = dt, type.predict = "response")
+
+ggplot(dt, aes(x = alter, y = sammler)) +
+  geom_jitter(height = 0.025, alpha = 0.2) +
+  geom_line(aes(x = alter, y = .fitted), colour = "blue") +
+  theme_stata()
+```
+
+
+# Aufgabe
+
+![](bilder/radioquiz.jpg)
+
+Diskutieren Sie 🙇🙇🙇 die Regressions-Annahmen  📈  und zeigen Sie ob und wie Verletzungen 🏥 der Annahmen erkannt 🕵️  werden können
+
+
+---
+
+# Quellen
+
++ <https://commons.wikimedia.org/wiki/File:SophieAndersonTakethefairfaceofWoman.jpg>
++ <https://commons.wikimedia.org/wiki/File:Radioquiz_%22Allein_gegen_alle%22_aus_dem_Ratssaal_(Kiel_45.567).jpg>
++ <https://de.wikipedia.org/wiki/Datei:DBP_1951_Posthorn_komplett.jpg>
+
+---
+
+![](bilder/fair.jpg)
+
+---
+
+# Nachtrag
+
+Wer genau 🕵️ auf die Simulation der Daten 📊geschaut hat wird einwenden, dass eine Regression mit Interaktion doch super 🤗 funktionieren müsste.
+
+Genau 🙃! Um dies zu zeigen müssen wir die Anzahl der Beobachtungen etwas 📊 erhöhen.
+
+Dies aber nur für alle die noch etwas knobeln 🤔 (und Interaktionen wiederholen) wollen.
+
+```{r}
+dt3 <- 
+  map_df(1:100, ~ dt2) %>% 
+  mutate(alter_10 = fct_collapse(alter_10, `40_50` = c("40", 50)))
+
+fit <- lm(sammler ~ alter*alter_10, data = dt3)
+tidy_lm(fit)
+glance_lm(fit)
+
+dt3 <- augment(x=fit, newdata = dt3, type.predict = "response")
+
+ggplot(dt3, aes(x = alter, y = sammler)) +
+  geom_jitter(height = 0.0125, alpha = 0.0025) +
+  geom_point(aes(x = alter, y = .fitted), colour = "blue") +
+  theme_stata()
+```
+
