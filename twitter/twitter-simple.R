@@ -10,8 +10,8 @@ library(tidyverse)
 get_token()       # is authorization set up on this machine?  --- see `setup-authorization.R`
 language <- "en"  # set language for Twitter search and stopwords list
 
-# tw_df <- search_tweets("covid19", n = 200, include_rts = FALSE, lang = "en")
-tw_df <- get_timeline("potus", n = 200)
+tw_df <- search_tweets("covid19", n = 200, include_rts = FALSE, lang = language)
+# tw_df <- get_timeline("potus", n = 200)
 
 # rtweet::write_as_csv(tw_df, "tweets.csv")
 
@@ -23,11 +23,11 @@ ts_plot(tw_df, by = "week")  # options time interval: minute, hour, day, week, m
 # tweets text into tokens with tidytext
 tw_tk <- 
   tw_df %>%
-  mutate(text = str_replace_all(text, "\\W+", " ")) %>%  # remove all non-word characters
+  mutate(text = str_replace_all(text, "\\W+|\\d|_", " ")) %>%  # remove non-word characters
   unnest_tokens(word, text)
 
 # clean-up tokens
-words_to_remove <- c("https", "t.co")
+words_to_remove <- c("https", "tco", "covid")
 tk_clean <- 
   tw_tk %>% 
   filter(
