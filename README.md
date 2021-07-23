@@ -16,6 +16,7 @@ _Tidyverse-R [first](http://varianceexplained.org/r/teach-tidyverse/)_
 + __More references__
   + Healy, Kieran. 2018. [Data Visualization: A Practical Introduction](https://socviz.co/). Princeton, NJ: Princeton University Press.
   + Chang, Winston. 2019. [R Graphics Cookbook: Practical Recipes for Visualizing Data](https://r-graphics.org). Sebastopol, CA: O’Reilly Media.
+  + [Tidyverse Skills for Data Science](https://jhudatascience.org/tidyversecourse/)
   + [Statistical Inference via Data Science: A moderndive into R and the tidyverse](https://moderndive.com/)
   + Wickham, Hadley. 2019. [Advanced R. 2nd ed](http://adv-r.had.co.nz/). Boca Raton, FL: Chapman and Hall/CRC.
   + [Quantitative Politics with R](http://qpolr.com/) — _[ Beginners ]_
