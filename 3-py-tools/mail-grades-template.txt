@@ -1,0 +1,19 @@
+Liebe/r {{ Studierender }},
+
+ich habe jetzt die Bewertung des Lerntagebuches und des Medienbeitrages im Seminar "Moralpolitik" vorgenommen (siehe auch Kursplan).
+
+Lerntagebuch (80%): {{ Lerntagebuch|float|round(1) }}
+Medienbeitrag (20%): {{ Medienbeitrag|float|round(1) }}
+{% if Anmerkungen is not none %}
+Hinweis: "{{ Anmerkungen }}"
+{% endif %}
+
+Ich füge Ihre Beiträge mit meinen Anmerkungen und Hinweisen bei. Das Erstellen des Lerntagebuchs ist den Teilnehmenden gut gelungen (Durchschnitt: X,XX; n=X). Die schriftlichen Ausarbeitungen der Medienbeiträge waren heterogener (Durchschnitt: X,XX).
+
+
+Viel Erfolg beim weiteren Studium und Grüße
+
+Holger Döring
+
+
+Benotung Seminar Moralpolitik
