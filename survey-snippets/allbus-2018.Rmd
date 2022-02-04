@@ -1,0 +1,132 @@
+---
+title: "Aufbereitung Allbus"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_chunk$set(
+  results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+  )
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+
+```{r corepacks}
+library(tidyverse)
+library(knitr)
+
+set.seed(0)
+
+ggplot2::theme_set(theme_minimal())
+```
+
+# Einleitung
+
+Der __[Allbus]() Datensatz__ beinhaltet Gewichte für die Befragten. Besonders ist zu beachten, dass Ostdeutsche mit einem größeren Anteil in die Stichprobe einbezogen sind.
+
+In R ist die Gewichtung von Variablen umständlicher als in Stata und SPSS. Das [survey](https://cran.r-project.org/web/packages/survey/)-Paket ermöglicht es Gewichte zu berücksichtigen.
+
+Hier nutze ich einen alternativen Ansatz für einfache Analysen. Ich erstelle eine __gewichtete Stichprobe__ des Allbus-Datensatzes. Damit erfolgt eine vereinfachte Korrektur der Umfragegewichtung.
+
+__Hinweis__ -- Dieser Ansatz ist für einfache Lehr-Beispiele gedacht. Im Vordergrund steht das Erlernen von Tidyverse-R. Mein Ziel ist ein einfaches __R-freundliches Allbus-Beispiel__.
+
+
+# Datenaufbereitung
+
+`survey-to-R.R` zur Aufbereitung von Umfrage-Datensätzen für R
+
++ Variablen mit Variablen-Label in Faktoren umwandeln
++ negative Werte in fehlende Werte ("missing values") umkodieren
++ Datensatz im rds-Format erstellen
+
+Aufbereitung und Gewichtung
+
++ Variablen anpassen und aufbereiten
+   + _land_ -- Faktor-Bezeichner nach Namen ordnen
+   + _wghtpew_ -- numerische Werte Gewicht aus Allbus Rohdatensatz wiederherstellen
++ gewichtete Stichprobe des gesammten Datensatzes erstellen
+  + `sample_frac(size = 1, replace = TRUE, weight = wghtpew)`
+
+```{r}
+# aufbereitete Datensatz einlesen -- siehe 'survey-to-R.R'
+allbus_rds <- read_rds("source__Allbus-2018.rds")
+allbus_raw <- haven::read_sav("source__ZA5270/ZA5270_v2-0-0.sav.zip")
+
+
+# Variablen anpassen
+allbus <- 
+  allbus_rds %>% 
+  mutate(
+    land = fct_relevel(land, sort),
+    wghtpew = allbus_raw$wghtpew
+    )
+
+# gewichtete Stichprobe Daten
+allbus_sample <-
+  allbus %>% 
+  sample_frac(replace = TRUE, weight = wghtpew)
+
+# glimpse(allbus) %>% top_n(5)
+
+write_rds(allbus_sample, "source__allbus-2018_stichprobe-gewichtet.rds", compress = "xz")
+```
+
+
+```{r}
+n_allbus <- nrow(allbus)
+n_duplicate <- n_allbus - nrow(distinct(allbus_sample))
+```
+
+Durch die gewichtete Stichprobe sind __`r n_duplicate`__ von `r n_allbus` Beobachtungen __mehrfach__ im Datensatz (Beobachtungen mit hohem Gewicht).
+
+
+# Anteile Länder
+
+Vergleich berechnete Anteile Befragte nach Bundesländern
+
+* _share_sample_ -- gewichtete Stichprobe
+* _share_weighted_ -- ALLBUS mit Gewichtung
+* _share_no_weight_ -- ALLBUS ohne Gewichtung
+
+
+```{r}
+ab_sample <- 
+  allbus_sample%>%
+  count(land) %>%
+  mutate(share_sample = round(100 * n / sum(n), 1)) %>% 
+  select(-n)
+
+ab_wtd <- 
+  allbus %>% 
+  group_by(land) %>% 
+  summarise(share_weighted = sum(wghtpew)) %>% 
+  mutate(share_weighted = round(100 * share_weighted / sum(share_weighted), 1))
+
+ab_share <- 
+  allbus %>%
+  count(land) %>%
+  mutate(share_no_weight = round(100 * n / sum(n), 1)) %>% 
+  select(-n)
+
+ab_sample %>% 
+  left_join(ab_wtd) %>% 
+  mutate(difference = share_weighted - share_sample) %>% 
+  left_join(ab_share)
+```
+
