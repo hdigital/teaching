@@ -2,10 +2,13 @@
 
 [The tidyverse style guide](https://style.tidyverse.org/)
 
-pipes — `%>%` · 🌬️
+pipes — `|>` · 🌬️
 
-+ one line per each step in a pipe
-+ first line pipe with name of new object and assignment operator
++ one line for each step in a pipe
++ first line pipe with name of new object and assignment operator (only)
++ use Base-R pipe `|>` over Tidyverse-R pipe `%>%` for R >= 4.2
+  + placeholder `_` (`|>`) instead of `.` (`%>%`)
+  + check _Use native pipe operator_ in [RStudio](https://www.rstudio.com/blog/rstudio-v1-4-update-whats-new/)
 
 packages · 📦 // see snippet below
 
@@ -51,7 +54,7 @@ workflow · ⚙️
 Loading packages
 
 ```r
-library(lme4)       # models // multi-level 
+library(lme4)       # models // multi-level
 library(broom)      # models // tidy results
 library(broom.mixed)
 library(ggeffects)  # models // visualize model effects
