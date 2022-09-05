@@ -1,0 +1,88 @@
+variable,classification,value,short,name,label,label_bormann_golder
+elecrule,Plurality,1,smdp,SMD_Plurality,Single-Member-District-Plurality (SMDP),Single-Member-District-Plurality (SMDP)
+elecrule,Absolute-Majority,2,trs,Two-Rounds,Two-Round System (TRS),Two-Round System (TRS)
+elecrule,Absolute-Majority,3,av,Alternative-Vote,Alternative Vote (AV),Alternative Vote (AV)
+elecrule,Plurality,4,borda,Borda,Borda Count (BC),Borda Count (BC)
+elecrule,Plurality,5,block,Block-Vote,Block Vote (BV),Block Vote (BV)
+elecrule,Plurality,6,pbv,Party-Block,Party Block Vote (PBV),Party Block Vote (PBV)
+elecrule,Plurality,7,limited,Limited,Limited Vote (LV),Limited Vote (LV)
+elecrule,Plurality,8,sntv,SNTV,Single Nontransferable Vote (SNTV),Single Nontransferable Vote (SNTV)
+elecrule,List-PR,9,pr,List-PR,List Proportional Representation (List PR),List Proportional Representation (List PR)
+elecrule,STV,10,stv,STV,Single Transferable Vote (STV),Single Transferable Vote (STV)
+elecrule,Dependent,11,md,Dependent,Mixed Dependent (or Mixed Member Proportional),Mixed Dependent (or Mixed Member Proportional)
+elecrule,Independent,12,mi,Independent,Mixed Independent (or Mixed Parallel),Mixed Independent (or Mixed Parallel)
+formula,Plurality,1,smdp,SMD_Plurality,Single-Member-District-Plurality (SMDP),Single-Member-District-Plurality (SMDP)
+formula,Plurality,2,trs-plurality,TRS_Plurality,Two Round Majority-Plurality,Two Round Majority-Plurality
+formula,Absolute-Majority,3,trs-majority,TRS_Majority,Two Round Qualified Majority,Two Round Qualified Majority
+formula,Absolute-Majority,4,trs-runoff,TRS_Runoff,Two Round Majority Runoff,Two Round Majority Runoff
+formula,Absolute-Majority,5,av,Alternative-Vote,Alternative Vote (AV),Alternative Vote (AV)
+formula,Plurality,6,borda,Borda,Borda Count (BC),Borda Count (BC)
+formula,Plurality,7,borda-mod,Borda_modified,Modified Borda Count (mBC),Modified Borda Count (mBC)
+formula,Plurality,8,block,Block-Vote,Block Vote (BV),Block Vote (BV)
+formula,Plurality,9,block-party,Block-Party,Party Block Vote (PBV),Party Block Vote (PBV)
+formula,Plurality,10,limited,Limited,Limited Vote (LV),Limited Vote (LV)
+formula,Plurality,11,sntv,SNTV,Single Nontransferable Vote (SNTV),Single Nontransferable Vote (SNTV)
+formula,Quota,12,hare,Hare,Hare quota,Hare quota
+formula,Quota,13,hare-la,Hare_largest,Hare quota with largest remainders,Hare quota with largest remainders
+formula,Quota,14,hare-hi,Hare_highest,Hare quota with highest average remainders,Hare quota with highest average remainders
+formula,Quota,15,habi,Ha-Bi,Hagenbach-Bischoff quota,Hagenbach-Bischoff quota
+formula,Quota,16,habi-la,Ha-Bi_largest,Hagenbach-Bischoff quota with largest remainders,Hagenbach-Bischoff quota with largest remainders
+formula,Quota,17,habi-hi,Ha-Bi_highest,Hagenbach-Bischoff quota with highest average remainders,Hagenbach-Bischoff quota with highest average remainders
+formula,Quota,18,droop,Droop,Droop quota,Droop quota
+formula,Quota,19,droop-la,Droop_largest,Droop quota with largest remainders,Droop quota with largest remainders
+formula,Quota,20,droop-hi,Droop_highest,Droop quota with highest average remainders,Droop quota with highest average remainders
+formula,Quota,21,imperial,Imperial,Imperiali quota,Imperiali quota
+formula,Quota,22,Imperial-la,Imperial_largest,Imperiali quota with largest remainders,Imperiali quota with largest remainders
+formula,Quota,23,Imperial-hi,Imperial_highest,Imperiali quota with highest average remainders,Imperiali quota with highest average remainders
+formula,Quota,24,imperial-reinforced,Imperial_reinforced,Reinforced Imperiali quota,Reinforced Imperiali quota
+formula,Divisor,25,hondt,d-Hondt,D’Hondt,D’Hondt
+formula,Divisor,26,sainte-lague,Sainte-Lague,Sainte-Laguë,Sainte-Laguë
+formula,Divisor,27,mod-sainte-lague,Sainte-Lague_modified,Modified Sainte-Laguë,Modified Sainte-Laguë
+formula,STV,28,stv,Single-Transferable,Single Transferable Vote,Single Transferable Vote
+legislative_type,,1,maj,Majoritarian,Majoritarian,Majoritarian
+legislative_type,,2,pr,Proportional,Proportional,Proportional
+legislative_type,,3,mix,Mixed,Mixed,Mixed
+mixed_type,Independent,1,coex,Coexistence,Coexistence,Coexistence
+mixed_type,Independent,2,super,Superposition,Superposition,Superposition
+mixed_type,Independent,3,fusion,Fusion,Fusion,Fusion
+mixed_type,Dependent,4,correct,Correction,Correction,Correction
+mixed_type,Dependent,5,cond,Conditional,Conditional,Conditional
+preselecrule,,1,plural,Plurality,Plurality,Plurality
+preselecrule,,2,maj-abs,Majority_absolute,Absolute Majority,Absolute Majority
+preselecrule,,3,maj-qual,Majority_qualified,Qualified Majority,Qualified Majority
+preselecrule,,4,elec-col,Electoral-College,Electoral College,Electoral College
+preselecrule,,5,av,Alternative-Vote,Alternative Vote,Alternative Vote
+regime,,0,demo-parl,Democracy_Parliament,Parliamentary democracy,Parliamentary democracy
+regime,,1,demo-sempres,Democracy_Semi-Pres,Semi-presidential democracy,Semi-presidential democracy
+regime,,2,demo-pres,Democracy_President,Presidential democracy,Presidential democracy
+regime,,3,dict-civ,Dictator_Civilian,Civilian dictatorship,Civilian dictatorship
+regime,,4,dict-mil,Dictator_Military,Military dictatorship,Military dictatorship
+regime,,5,dict-royal,Dictator_Royal,Royal dictatorship,Royal dictatorship
+region1,,1,afri-sahara,Africa_Sub-Saharan,Sub-Saharan Africa,Sub-Saharan Africa
+region1,,2,asia-south,Asia_South,South Asia,South Asia
+region1,,3,asia-east,Asia_East,East Asia,East Asia
+region1,,4,asia-s-east,Asia_South-East,South East Asia,South East Asia
+region1,,5,pacific,Pacific-Oceania,Pacific Islands / Oceania,Pacific Islands/Oceania
+region1,,6,afri-n-me,Africa-N_Middle-East,Middle East / North Africa,Middle East/North Africa
+region1,,7,amer-latin,America_Latin,Latin America,Latin America
+region1,,8,amer-carib,America_Caribbean,Caribbean / non-Iberic America,Caribbean and non-Iberic America
+region1,,9,euro-east,Europe-E_p-Soviet,Eastern Europe / post-Soviet states,Eastern Europe/post-Soviet states
+region1,,10,oecd,OECD,Industrialized Countries (OECD),Industrialized Countries (OECD)
+region1,,11,oil,Oil-Countries,Oil Countries,Oil Countries
+region2,,1,afri-sahara,Africa_Sub-Saharan,Sub-Saharan Africa,Sub-Saharan Africa
+region2,,2,asia-south,Asia_South,South Asia,South Asia
+region2,,3,asia-east,Asia_East,East Asia,East Asia
+region2,,4,asia-s-east,Asia_South-East,South East Asia,South East Asia
+region2,,5,pacific,Pacific-Oceania,Pacific Islands / Oceania,Pacific Islands/Oceania
+region2,,6,afri-n-me,Africa-N_Middle-East,Middle East / North Africa,Middle East/North Africa
+region2,,7,amer-latin,America_Latin,Latin America,Latin America
+region2,,8,amer-carib,America_Caribbean,Caribbean / non-Iberic America,Caribbean and non-Iberic America
+region2,,9,euro-east,Europe-E_p-Soviet,Eastern Europe / post-Soviet states,Eastern Europe/post-Soviet states
+region2,,10,euro-west,Europe-West,Western Europe,Western Europe
+region3,,1,africa,Africa,Sub-Saharan Africa,Sub-Saharan Africa
+region3,,2,asia,Asia,Asia,Asia
+region3,,3,west,West,"West (incl. US, Canada, Australia, New Zealand)","West (incl.US, Canada, Australia, New Zealand)"
+region3,,4,euro-east,Europe-East,Eastern Europe / post-Soviet states,Eastern Europe/post-Soviet states
+region3,,5,oceania,Oceania,Pacific Islands / Oceania,Pacific Islands/Oceania
+region3,,6,afri-n-me,Africa-N_Middle-East,Middle East / North Africa,Middle East/North Africa
+region3,,7,america,America-Latin,Latin America / Caribbean,Latin America/Caribbean

@@ -1,0 +1,435 @@
+---
+title: "Landtagswahl Sachsen-Anhalt 2021"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_knit$set(
+  # results = "hide",
+  # comment = NA,
+  message = FALSE,
+  warning = FALSE,
+  package.startup.message = FALSE
+  )
+options(
+  tidyverse.quiet = TRUE,
+  dplyr.summarise.inform = FALSE,
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100
+)
+```
+
+```{r corepacks}
+library(lme4)       # models // multi-level 
+library(estimatr)   # models // robust standard errors
+library(broom)      # models // tidy results
+library(broom.mixed)
+library(ggeffects)  # models // visualize model effects
+library(patchwork)  # plots // arrange
+library(sf)         # maps
+library(tidyverse)  # load last to avoid masking
+# DT:: skimr:: viridis::
+
+ggplot2::theme_set(theme_minimal())
+```
+
+<p style="page-break-before: always">
+
+## Daten
+
+[wahlergebnisse.sachsen-anhalt.de](https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt21/and/lt.download.php)
+
+Landtags-Wahlkreise (LTWK) mit Wahlbezirken (WBZ) zur Stimmenabgabe der Wahlberechtigten ohne Briefwahl
+
++ `berechtigt` — Wahlberechtigte im Wahlbezirk
++ `anteil` — Anteil der Stimmen einer Partei im Wahlbezirk (berechnet)
++ `beteiligt` — Wahlbeteiligung im Wahlbezirk (%)
++ `gross_stadt` — Großstadt (Wahlbezirke in Halle oder Magdeburg)
++ `ltwk_nr` — Landtags-Wahlkreis-Nummer (aufsteigend von Norden nach Süden)
+
+---
+
+```{r}
+raw_ltw <- readxl::read_excel("source__daten-wahl/LT2021_WBZ_tier2.xlsx", na = c("", "-"))
+
+ltw <- 
+  raw_ltw %>% 
+  filter(
+    wbz_art != "B",          # remove mail in ballot ("Briefwahl")
+    ! is.na(ags), berechtigt < 2500
+    ) %>% 
+  mutate(gross_stadt = if_else(str_detect(ltwk, "Halle|Magdeburg"), "ja", "nein"),)
+
+partei_lt <- c("CDU", "AfD", "DIE LINKE", "SPD", "FDP", "GRÜNE")
+
+n_ltwk <- unique(ltw$ltwk_nr) %>% length()
+n_wbz <- unique(paste(ltw$ltwk_nr, ltw$wbz_nr)) %>% length()
+```
+
+Anzahl der
+
++ Landtags-Wahlkreise (LTWK) — __`r n_ltwk`__
++ Wahlbezirke (WBZ) — __`r n_wbz`__
+
+Verteilung
+
++ Anzahl der _Wahlberechtigten_ in Wahlbezirken (WBZ)
++ Anzahl der _Wahlbezirke_ (WBZ) in Landtags-Wahlkreisen (LTWK)
+
+```{r, message=FALSE}
+ltw_pa1 <- 
+  ltw %>%
+  select(ags, wbz_nr, gross_stadt, abgegeben, CDU:WiR2020) %>% 
+  pivot_longer(CDU:WiR2020, names_to = "partei", values_to = "stimmen") %>% 
+  mutate(stimmen = if_else(is.na(stimmen), 0, stimmen),
+         anteil = round(100 * stimmen / abgegeben, 1))
+
+ltw_pa2 <- 
+  ltw_pa1 %>% 
+  mutate(partei = if_else(partei %in% partei_lt, partei, "andere")) %>% 
+  group_by(ags, wbz_nr, gross_stadt, partei) %>% 
+  summarise(anteil = sum(anteil)) %>% 
+  left_join(ltw %>% select(ltwk_nr:gueltig)) %>% 
+  group_by(partei) %>% 
+  mutate(
+    ltwk_nr = as.integer(ltwk_nr),
+    anteil_rang = percent_rank(anteil) %>% round(3)
+    ) %>% 
+  arrange(ltwk_nr, gemeinde, wbz)
+
+ltw_pa3 <- 
+  ltw_pa2 %>% 
+  filter(partei != "andere") %>% 
+  mutate(partei = parse_factor(partei, partei_lt))
+```
+
+
+```{r pl-descriptive, message=FALSE}
+pl1 <- 
+  ltw %>% count(ltwk, gross_stadt, name = "wahlbezirke") %>% 
+  ggplot(aes(x = wahlbezirke, fill = gross_stadt)) + 
+  geom_density(alpha = 0.6) +
+  scale_fill_discrete(guide = FALSE) +
+  ylab("dichte") +
+  theme(axis.text.y = element_blank())
+
+pl2 <- 
+  ggplot(ltw, aes(x = berechtigt, fill = gross_stadt)) + 
+  geom_density(alpha = 0.6) +
+  scale_fill_discrete(guide = FALSE) +
+  ylab("dichte") +
+  theme(axis.text.y = element_blank())
+
+pl3 <- 
+  ggplot(ltw_pa3, aes(x = partei, y = anteil, colour = gross_stadt)) +
+  geom_jitter(alpha = 0.2) +
+  theme(axis.title.x = element_blank())
+
+pl3 / (pl1 + pl2)
+```
+
+## Karten
+
+```{r, message=FALSE, cache=TRUE}
+karte_wbz <- read_rds("source__daten-geo/st-wahlbezirke.rds")
+karte_land <- read_rds("source__daten-geo/st-land-ne.rds")
+karte_stadt <- read_rds("source__daten-geo/st-staedte-wikidata.rds")
+karte_strasse_ab <- read_rds("source__daten-geo/st-strassen-ab-osm.rds")
+karte_strasse_bu <- read_rds("source__daten-geo/st-strassen-bu-osm.rds")
+
+ltw_pa3_min_max <- 
+  ltw_pa3 %>% 
+  group_by(partei) %>% 
+  summarise(min = min(anteil, na.rm = TRUE) %>% round(),
+            max = max(anteil, na.rm = TRUE) %>% round()) %>% 
+  mutate(partei_info = glue::glue("{partei} {min}-{max}%")) 
+
+pl <- 
+  karte_wbz %>% 
+  right_join(ltw_pa3) %>% 
+  arrange(anteil_rang) %>% 
+  ggplot() + 
+  # geom_sf(data = karte_land, fill = NA ) +
+  geom_sf(data = karte_strasse_ab,  colour = "grey85", size = 0.9) +
+  geom_sf(data = karte_strasse_bu,  colour = "grey80") +
+  geom_sf(aes(colour = anteil_rang), size = 0.6, alpha = 0.6) + 
+  viridis::scale_colour_viridis(option = "E", direction = -1) +
+  geom_sf(data = karte_stadt, aes(size = einwohner), colour = "deeppink3", shape = "+", alpha = 0.6) +
+  scale_size_continuous(range = c(2, 6)) +
+  facet_wrap(vars(partei)) +
+  labs(caption = str_replace(paste(ltw_pa3_min_max$partei_info, collapse = ", "), "SPD", "\nSPD")) +
+  theme_void()
+
+print(pl)
+ggsave("z-wahl-st-karte.png", pl)
+ggsave("z-wahl-st-karte.pdf", pl, width = 297, height = 210, units = "mm")
+```
+
+```{r, message=FALSE, include=FALSE, eval=FALSE}
+# map with combined vote share AfD + LINKE 
+
+pl_dt <- 
+  karte_wbz %>% 
+  right_join(ltw_pa3) %>% 
+  filter(partei %in% c("AfD", "DIE LINKE")) %>% 
+  group_by(ags, wbz_nr) %>% 
+  summarise(afd_linke = sum(anteil, na.rm = TRUE))
+
+ggplot(pl_dt) + 
+  geom_sf(aes(colour = afd_linke), size = 1.0, alpha = 0.6) + 
+  geom_sf(data = karte_land, fill = NA ) +
+  viridis::scale_colour_viridis(option = "D", direction = -1) +
+  geom_sf(data = karte_stadt, aes(size = einwohner), colour = "deeppink3", shape = "+", alpha = 0.6) +
+  scale_size_continuous(range = c(2, 6)) +
+  theme_void()
+```
+
+
+## Modelle
+
+### Parteien (Interaktion)
+
+Modell mit allen Stimmen-Anteilen der Parteien in Wahlbezirken und der Modellierung von Partei-Effekten mit Interaktionen.
+
+```{r, warning=FALSE}
+# + interact all predictors with "party" (all effects vary by "party")
+# + clustered standard errors by electoral district
+# mo1 <- lm(anteil ~ berechtigt*partei + gross_stadt*partei + beteiligung*partei + ltwk*partei, data = ltw_pa3)
+mo1 <- lm_robust(anteil ~ berechtigt*partei + gross_stadt*partei + beteiligung*partei,
+                 clusters = ltwk, data = ltw_pa3)
+
+# summary(mo1)
+# tidy(mo1) %>% DT::datatable()  # too many coefficients
+
+party_color <- c("#1F78B4", "#A6CEE3", "#FB9A99", "#E31A1C", "#FDBF6F", "#33A02C")
+
+plot_effects <- function(terms, show_legend = TRUE) {
+  ggpredict(mo1, terms = terms) %>% 
+    plot(colors = party_color, show.legend = show_legend,
+         show.title = FALSE, show.y.title = FALSE, limit.range = TRUE)
+}
+
+# plot_effects(terms = c("berechtigt", "partei", "gross_stadt"), show_legend = FALSE)
+
+pl1 <- plot_effects(terms = c("berechtigt", "partei"), show_legend = FALSE)
+pl2 <- plot_effects(terms = c("beteiligung", "partei"))
+
+pl3 <- 
+  ggpredict(mo1, terms = c("partei", "gross_stadt")) %>% 
+  plot(show.title = FALSE, colors = c("#0571B0", "#CA0020"), show.y.title = FALSE)
+
+(pl1 | pl2 ) / pl3 + plot_layout(heights = c(2, 1))
+```
+
+### Partei · `r partei_auswahl`
+
+Mehr-Ebenen-Modell für Stimmen-Anteil der __`r partei_auswahl`__ in den Wahlbezirken.
+
+Nutzung von Mehr-Ebenen-Modellen für unterschiedliche Effekte in Landtags-Wahlkreisen mit Zentrierung einiger Variablen (`_mittel` — "centering within clusters").
+
+
+```{r, message=FALSE, warning=FALSE}
+karte_wbz_xy <- read_csv("source__daten-geo/wahlbezirke.csv") %>% select(wbz, latitude, longitude)
+
+# CWC --centering within clusters
+ltw_pa3_mlm <- 
+  ltw_pa3 %>% 
+  left_join(karte_wbz_xy) %>% 
+  group_by(ltwk_nr, partei) %>% 
+  mutate(
+    berechtigt_mittel = berechtigt - mean(berechtigt, na.rm = TRUE),
+    beteiligung_mittel = beteiligung - mean(beteiligung, na.rm = TRUE),
+    breitengrad_mittel = latitude - mean(latitude, na.rm = TRUE),
+    laengengrad_mittel = longitude - mean(longitude, na.rm = TRUE)
+    )
+
+lmer_formula <- 
+  as.formula(
+  # "anteil ~ berechtigt_mittel + beteiligung_mittel + gross_stadt + ltwk_nr + (1 | ltwk)"
+  "anteil ~ berechtigt_mittel*gross_stadt + beteiligung_mittel*gross_stadt + gross_stadt + breitengrad_mittel + laengengrad_mittel + (1 | ltwk)"
+  )
+
+partei_auswahl <- "AfD"
+ltw_partei <- ltw_pa3_mlm %>% filter(partei == partei_auswahl)
+
+mo2 <- lmer(lmer_formula, data = ltw_partei)
+# summary(mo2)
+
+# ## random slope only model not different from random coefficient model ("+ (berechtigt_mittel | ltwk)")
+# performance::performance_lrt(mo2a, mo2b) 
+
+tidy(mo2) %>% 
+  filter(effect == "fixed") %>% 
+  select(-effect, -group) %>% 
+  mutate_if(is.numeric, round, 3)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+plot_effects <- function(term) {
+  ggemmeans(mo2, terms = c(term, "gross_stadt")) %>% 
+  plot(add.data = TRUE, show.title = FALSE, show.legend = FALSE, show.y.title = FALSE)
+}
+
+pl1 <- plot_effects("berechtigt_mittel")
+pl2 <- plot_effects("beteiligung_mittel")
+# pl3 <- plot_effects("breitengrad_mittel")
+# pl4 <- plot_effects("laengengrad_mittel")
+
+pl1 + pl2 # + pl3 + pl4
+
+# predict(mo2, ltw_partei[str_detect(ltw_partei$wbz, "Jerichow, OT Kade"), ]) %>% round(1)
+```
+
+### Parteien (einzeln)
+
+Je ein Mehr-Ebenen-Modell zur Bestimmung des Stimmen-Anteils einer Partei in den Wahlbezirken.
+
+```{r, message=FALSE, warning=FALSE}
+ltw_lm <- 
+  ltw_pa3_mlm %>% 
+  group_by(partei) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, function(df) lmer(lmer_formula, data = df)),
+    model_tidy = map(model, tidy),
+    model_pred1 = map(model, ~ ggemmeans(.x, terms = c("berechtigt_mittel", "gross_stadt"))),
+    model_pred2 = map(model, ~ ggemmeans(.x, terms = c("beteiligung_mittel", "gross_stadt"))),
+    model_pred3 = map(model, ~ ggemmeans(.x, terms = c("breitengrad_mittel"))),
+    model_pred4 = map(model, ~ ggemmeans(.x, terms = c("laengengrad_mittel")))
+    )
+
+ltw_lm %>% 
+  unnest(model_tidy) %>%
+  filter(effect == "fixed") %>% 
+  select(-data, -effect, -group, -starts_with("model")) %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  DT::datatable()
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+ltw_lm %>% 
+  unnest(model_pred1) %>%
+  ggplot(aes(x = x, y = predicted)) +
+  geom_point(aes(x = berechtigt_mittel, y = anteil, colour = gross_stadt), data = ltw_pa3_mlm, alpha = 0.02) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.6) +
+  geom_line(aes(group = group), colour = "gray40") +
+  xlab("berechtigt_mittel") + ylab("anteil") +
+  xlim(-1600, 1600) +
+  guides(colour = FALSE, fill = FALSE) +
+  facet_wrap(vars(partei))
+
+ltw_lm %>% 
+  unnest(model_pred2) %>%
+  select(-data, -model, -model_tidy) %>% 
+  ggplot(aes(x = x, y = predicted)) +
+  geom_point(aes(x = beteiligung_mittel, y = anteil, colour = gross_stadt), data = ltw_pa3_mlm, alpha = 0.02) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.6) +
+  geom_line(aes(group = group), colour = "gray40") +
+  xlab("beteiligung_mittel") + ylab("anteil") +
+  xlim(-25, 25) +
+  guides(colour = FALSE, fill = FALSE) +
+  facet_wrap(vars(partei))
+```
+
+Geographische Lage
+
+```{r, message=FALSE, warning=FALSE}
+pl1 <- 
+  ltw_lm %>% 
+  unnest(model_pred3) %>%
+  ggplot(aes(x = x, y = predicted)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), fill = "slategray1") +
+  geom_line() +
+  xlab("breitengrad_mittel") + ylab("anteil") +
+  xlim(-0.22, 0.22) +
+  facet_wrap(vars(partei))
+
+pl2 <- 
+  ltw_lm %>% 
+  unnest(model_pred4) %>%
+  ggplot(aes(x = x, y = predicted)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), fill = "slategray1") +
+  geom_line() +
+  xlab("laengengrad_mittel") + ylab("anteil") +
+  facet_wrap(vars(partei))
+
+pl1 / pl2
+```
+
+### Beteiligung
+
+Mehr-Ebenen-Modell zur Bestimmung der Wahlbeteiligung in den Wahlbezirken
+
+```{r, warning=FALSE}
+mo3 <- lmer(beteiligung ~ berechtigt_mittel * gross_stadt + (1 | ltwk), data = ltw_partei)
+# summary(mo3)
+
+tidy(mo3) %>% 
+  filter(effect == "fixed") %>% 
+  select(-effect, -group) %>% 
+  mutate_if(is.numeric, round, 3)
+
+ggemmeans(mo3, terms = c("berechtigt_mittel", "gross_stadt")) %>% 
+  plot(add.data = TRUE, show.title = FALSE)
+```
+
+## Daten 
+
+### Ergebnisse Parteien
+
+```{r, message=FALSE, warning=FALSE}
+ltw_pa2 %>% 
+  left_join(ltw_pa1) %>% 
+  arrange(ltwk_nr, wbz, desc(anteil)) %>% 
+  select(ltwk, wbz, berechtigt, beteiligung, partei, stimmen, anteil, anteil_rang) %>% 
+  DT::datatable()
+```
+### Wahlkreise und -bezirke
+
+```{r, message=FALSE}
+ltw %>% 
+  group_by(ltwk_nr, ltwk) %>% 
+  select(berechtigt) %>% 
+  skimr::skim() %>% 
+  select(-skim_type, -skim_variable, -n_missing, -complete_rate) %>% 
+  mutate(across(c(numeric.mean, numeric.sd), ~ round(.x, 1))) %>% 
+  rename_with(~ str_replace(.x, fixed("numeric."), "")) %>% 
+  DT::datatable()
+```
+
+```{r, eval=FALSE}
+karte_wbz %>% 
+  left_join(ltw %>% select(wbz, berechtigt)) %>% 
+#  filter(str_detect(gemeinde, "^Halle")) %>% 
+  ggplot() +
+#  geom_sf() +
+  geom_sf(data = karte_strasse_ab,  colour = "grey70", size = 1.1) +
+  geom_sf(data = karte_strasse_bu,  colour = "grey60") +
+  geom_point(
+    aes(size = berechtigt, geometry = geometry),
+    colour = "blue", alpha = 0.15, stat = "sf_coordinates"
+    ) + 
+  theme_void()
+```
+
+```{r, eval=FALSE}
+karte_wbz %>% 
+  left_join(ltw) %>% 
+  select(wbz, berechtigt, abgegeben, CDU:FDP) %>% 
+  mapview::mapview()
+```

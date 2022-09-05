@@ -1,0 +1,91 @@
+---
+title: "Electorl systems quiz"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_knit$set(
+  # results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+  )
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+<!-- <p style="page-break-before: always"> -->
+
+## Reference
+
+Bormann, Nils-Christian, and Matt Golder. 2013. “Democratic Electoral Systems around the World, 1946–2011.” Electoral Studies 32(2): 360–69. — [doi:10.1016/j.electstud.2013.01.005](https://doi.org/10.1016/j.electstud.2013.01.005)
+
+![Fig. 2. Classification of legislative electoral systems.](source__es_data-v3/figure-2_systems.png)
+
+```{r, message=FALSE}
+library(tidyverse)
+
+es_raw <- read_rds("source__es-data-v3.rds")
+
+es <-
+  es_raw %>%
+  filter(presidential == 0, ! is.na(classification)) %>%
+  mutate(
+    classification = if_else(str_detect(classification, "Divisor|Quota"), "List", classification),
+    electoral_rule = paste(type_short, classification, sep = "-")
+    )
+
+rule <-
+  es %>%
+  group_by(country, electoral_rule) %>%
+  summarise(across(c("tier1_avemag", "upperseats", "enep", "enpp"), mean, na.rm = TRUE)) %>%
+  group_by(electoral_rule) %>%
+  summarise(n_ctry = n(),
+            across(where(is.numeric), ~ mean(.x, na.rm = TRUE) %>% round(1))) %>%
+  mutate(enp_diff = enep - enpp)
+```
+
+## Quiz
+
+```{r}
+rule_quiz <- rule %>% filter(electoral_rule != "Pro-STV")
+```
+
+
+Which of the capital letters __A to E__ is a summary of which __electoral system__?
+
++ `r paste(rule_quiz$electoral_rule, collapse = ", ")`
++ _Pro-STV_ removed from quiz to avoid confusion
+
+Parameters
+
++ tier1_avemag -- average district magnitude lowest tier
++ upperseats -- number of seats in districts above lowest tier
++ enep -- effective number  electoral parties
++ enpp -- effective number  parliamentary parties
+
+```{r}
+set.seed(1234)
+rule_quiz %>%
+  slice(sample(1:n())) %>%
+  mutate(electoral_rule = LETTERS[1:n()]) %>%
+  select(-n_ctry, -enp_diff)
+```
+
+---
+
+# Solution
+
+```{r, eval=FALSE}
+rule
+```

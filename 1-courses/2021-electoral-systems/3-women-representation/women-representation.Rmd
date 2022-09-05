@@ -1,0 +1,133 @@
+---
+title: "Women representation"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_knit$set(
+  # results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+  )
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+<!-- <p style="page-break-before: always"> -->
+
+```{r}
+library(broom)      # tidy model results
+library(ggeffects)  # visualize model results
+library(sf)         # plot maps
+library(tidyverse)
+
+women <- read_rds("women-representation-data.rds")
+```
+
+__Sources__
+
++ [World Bank Open Data](https://data.worldbank.org/)
+  + [SG.GEN.PARL.ZS](https://data.worldbank.org/indicator/SG.GEN.PARL.ZS) — Proportion of seats held by women in national parliaments (%)
++ [WhoGov](https://politicscentre.nuffield.ox.ac.uk/whogov-dataset/)
+  + share of women in cabinet (calculated)
++ [V-Dem](https://www.v-dem.net/en/)
+  + v2elloelsy — Lower chamber electoral system (13 categories)
+  + v2x_polyarchy — To what extent is the ideal of electoral democracy in its fullest sense achieved?
++ see [women-representation-data.R](women-representation-data.R)
+
+```{r, message=FALSE}
+pl <- 
+  ggplot(women %>% rename(share = parliament_share)) + 
+  geom_sf(aes(fill = share), lwd = 0.2) +  # Daten darstellen
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_viridis_b(option = "inferno", direction = -1, na.value = "grey70") +  # Farbskala
+  labs(title = "Women in parliament", caption = "Source: Worldbank WDI") +
+  theme_void()
+ggsave("z-parliament-share.png", pl, width = 8, height = 6)
+```
+
+```{r, message=FALSE}
+women %>% 
+  group_by(electoral_rule, democracy) %>% 
+  st_drop_geometry() %>%
+  select(parliament_share, government_share) %>% 
+  drop_na() %>% 
+  summarise(parliament_share = round(mean(parliament_share, na.rm = TRUE)),
+            government_share = round(mean(government_share, na.rm = TRUE)),
+            n = n()) 
+```
+
+```{r, message=FALSE}
+women %>% 
+  group_by(electoral_system, democracy) %>% 
+  st_drop_geometry() %>% 
+  drop_na() %>% 
+  select(parliament_share, government_share) %>% 
+  summarise(parliament_share = round(mean(parliament_share, na.rm = TRUE)),
+            government_share = round(mean(government_share, na.rm = TRUE)),
+            n = n()) %>% 
+  arrange(desc(democracy), desc(parliament_share))
+```
+
+
+```{r message=FALSE, warning=FALSE}
+ggplot(women) +
+  geom_sf(aes(fill = electoral_system), lwd = 0.1) +
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_brewer(palette = 1, type = "qual", na.value = "grey80") +
+  labs(caption = "Source: V-Dem") +
+  theme_void()
+```
+
+```{r, message=FALSE}
+pl <- 
+  ggplot(women %>% rename(share = government_share)) + 
+  geom_sf(aes(fill = share), lwd = 0.2) +  # Daten darstellen
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_viridis_b(option = "inferno", direction = -1, na.value = "grey70") +  # Farbskala
+  labs(title = "Women in government", caption = "Source: WhoGov") +
+  theme_void()
+ggsave("z-government-share.png", pl, width = 8, height = 6)
+```
+
+## Models
+
+```{r}
+fit_1 <- lm(parliament_share ~ democracy + electoral_rule + gdp + log(population), data = women)
+tidy(fit_1) %>% mutate(across(where(is.double), round, 2))
+
+ggeffect(fit_1, terms = c("gdp", "electoral_rule")) %>%
+  filter(group != "other") %>% 
+  plot(add.data = TRUE)
+```
+
+
+```{r}
+fit_2 <- lm(government_share ~ parliament_share + democracy, data = women)
+tidy(fit_2) %>% mutate(across(where(is.double), round, 2))
+
+ggeffect(fit_2, terms = c("parliament_share", "democracy")) %>% plot(add.data = TRUE)
+```
+
+## Data table
+
+```{r}
+women %>% 
+  select(name, continent, democracy, electoral_system, parliament_share, government_share) %>%
+  st_drop_geometry() %>% 
+  drop_na() %>% 
+  arrange(name) %>% 
+  DT::datatable()
+```
+

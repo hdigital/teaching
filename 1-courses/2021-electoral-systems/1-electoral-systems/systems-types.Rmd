@@ -1,0 +1,186 @@
+---
+title: "Electoral systems"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_knit$set(
+  # results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+  )
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+<!-- <p style="page-break-before: always"> -->
+
+## Classification
+
+Bormann, Nils-Christian, and Matt Golder. 2013. “Democratic Electoral Systems around the World, 1946–2011.” Electoral Studies 32(2): 360–69. — [doi:10.1016/j.electstud.2013.01.005](https://doi.org/10.1016/j.electstud.2013.01.005)
+
+![Fig. 2. Classification of legislative electoral systems](source__es_data-v3/figure-2_systems.png)
+
+
+```{r corepacks}
+library(DT)
+library(sf)
+library(tidyverse)
+```
+
+```{r recent-election}
+es_raw <- read_rds("source__es-data-v3.rds")
+es <- es_raw
+
+es_ctry <- 
+  es %>% 
+  filter(presidential == 0) %>% 
+  group_by(country) %>% 
+  mutate(
+    first = min(year),
+    last = max(year),
+    n = n()
+  ) %>% 
+  filter(row_number() == n()) %>% 
+  ungroup() %>% 
+  relocate(first, last, n, .after = country_name) %>% 
+  relocate(elec_id, date, .after = last_col()) %>% 
+  select(-presidential)
+```
+
+
+## Maps
+
+```{r}
+world <- read_rds("worldmap.rds")
+
+pl_world <- 
+  ggplot(data = world) + 
+  geom_sf(size = 0.2) +
+  theme_void()
+
+get_dt_table <- function(dt, var1, var2) {
+  dt %>% 
+    as_tibble() %>% 
+    filter(! is.na({{var2}})) %>% 
+    count({{var1}}, {{var2}})
+}
+```
+
+### Electoral systems
+
+```{r, message=FALSE}
+# use `right_join()` to keep sf class and remove not convered countries
+dt_map <- 
+  world %>% 
+  right_join(es_ctry) %>%
+  mutate(classification = paste(type_short, classification, sep = "-"))
+  
+pl_world + 
+  geom_sf(data = dt_map, aes(fill = type_short), size = 0.2) +
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_brewer(type = "qual", palette = 1)
+```
+
+
+```{r, message=FALSE}
+
+pl_class <- 
+  pl_world + 
+  geom_sf(data = dt_map %>% filter(! str_detect(classification, "NA")),
+          aes(fill = classification), size = 0.2) +
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_brewer(type = "qual", palette = 3)
+
+print(pl_class)
+ggsave("z-electoral-systems-map.png", pl_class)
+
+get_dt_table(dt_map, legislative_type, classification)
+```
+
+
+### Majoritarian types
+
+```{r}
+pl_dt <- dt_map %>% filter(type_short == "Maj")
+
+pl_world + 
+  geom_sf(data = pl_dt, aes(fill = elecrule_short), size = 0.2) +
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_brewer(type = "qual", palette = 7)
+```
+
+```{r}
+pl_dt %>% 
+  as_tibble() %>% 
+  count(classification, elecrule) %>% 
+  arrange(-n)
+```
+
+
+### PR formulas
+
+```{r, rows.print=15}
+pl_dt <- dt_map %>% filter(type_short == "Pro", ! is.na(tier1_short))
+
+pl_world + 
+  geom_sf(data = pl_dt, aes(fill = tier1_short), size = 0.2) +
+  coord_sf(crs = "+proj=robin")
+
+get_dt_table(pl_dt, classification, tier1_formula)
+```
+
+
+### Mixed types
+
+```{r}
+pl_dt <- dt_map %>% filter(type_short == "Mix", ! is.na(mixed_type))
+
+pl_world + 
+  geom_sf(data = pl_dt, aes(fill = mixed_type), size = 0.2) +
+  coord_sf(crs = "+proj=robin") +
+  scale_fill_brewer(type = "qual", palette = 6)
+
+get_dt_table(pl_dt, classification, mixed_type)
+```
+
+
+## Regions
+
+```{r}
+rule_region <- 
+  es_ctry %>% 
+  arrange(country) %>% 
+  group_by(region3_short, type_short, classification) %>% 
+  summarise(
+    n = n(),
+    countries = paste(str_to_title(country), collapse = ", "),
+    .groups = "drop"
+    ) %>% 
+  rename(region3 = region3_short, type = type_short)
+
+rule_region %>% datatable()
+```
+
+## Countries
+
+Only last legislative election provided for each country.
+
+```{r}
+es_ctry %>% datatable()
+# write_csv(es_ctry, "es-data-v3-country_HD.csv")
+```
+

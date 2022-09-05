@@ -1,0 +1,195 @@
+---
+title: "V-Dem electoral systems"
+author: "Holger Doering --- doering@uni-bremen.de"
+date: "`r format(Sys.time())`"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+  html_document:
+    code_folding: hide
+    df_print: paged
+    toc: yes
+---
+  <style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_chunk$set(
+  # results="hide",
+  message=FALSE,
+  warning=FALSE,
+  package.startup.message = FALSE
+)
+
+options(
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100,
+  tidyverse.quiet = TRUE
+)
+```
+
+## Source
+
++ Coppedge, Michael, John Gerring, Carl Henrik Knutsen, Staffan I. Lindberg, Jan Teorell, Nazifa Alizada, David Altman, Michael Bernhard, Agnes Cornell, M. Steven Fish, Lisa Gastaldi, Haakon Gjerløw, Adam Glynn, Allen Hicken, Garry Hindle, Nina Ilchenko, Joshua Krusell, Anna Luhrmann, Seraphine F. Maerz, Kyle L. Marquardt, Kelly McMann, Valeriya Mechkova, Juraj Medzihorsky, Pamela Paxton, Daniel Pemstein, Joseﬁne Pernes, Johannes von Römer, Brigitte Seim, Rachel Sigman, Svend-Erik Skaaning, Jeffrey Staton, Aksel Sundström, Ei-tan Tzelgov, Yi-ting Wang, Tore Wig, Steven Wilson and Daniel Ziblatt. 2021. ”V-Dem [Country–Year/Country–Date] Dataset v11.1” Varieties of Democracy Project. https://doi.org/10.23696/vdemds21
++ Pemstein, Daniel, Kyle L. Marquardt, Eitan Tzelgov, Yi-ting Wang, Juraj Medzihorsky, Joshua Krusell, Farhad Miri, and Johannes von Römer. 2021. “The V-Dem Measurement Model: Latent Variable Analysis for Cross-National and Cross-Temporal Expert-Coded Data”. V-Dem Working Paper No. 21 , 6th edition. University of Gothenburg: Varieties of Democracy Institute
++ __[v-dem.net](https://www.v-dem.net)__
+
+## V-Dem categories
+
+__Lower chamber electoral system__
+
+13 categories (A) (v2elloelsy)
+
+__Question:__ What was the electoral system used in this election for the lower or unicameral chamber
+of the legislature?
+
+```{r}
+library(glue)       # format strings
+library(patchwork)  # combine plots
+library(sf)         # maps
+library(tidyverse)
+
+vdem_raw <- read_csv("vdem-vars.csv")
+
+labels_elloelsy <- 
+  c("First-past-post", "Two-round", "Alternative vote",
+    "Block vote", "Party block vote", "Parallel (SMD/PR)",
+    "Mixed-member PR", "List PR small-MMD", "List PR large-MMD",
+    "STV", "SNTV", "Limited vote", "Borda Count")
+```
+
+V-Dem __categories__ electoral systems
+
+* `r paste(labels_elloelsy, collapse = ", ")`
+* some categories recoded into _Other_ in figures
+
+```{r}
+## Prepare V-Dem data
+
+elec_sys <- 
+  vdem_raw %>% 
+  select(country = country_text_id, country_name, year, v2elloelsy) %>%
+  group_by(country) %>% 
+  fill(v2elloelsy) %>% 
+  ungroup() %>% 
+  na.omit() %>% 
+  mutate(
+    electoral_system_all = factor(v2elloelsy, 
+                                  seq(0, length(labels_elloelsy) - 1), 
+                                  labels_elloelsy),
+    electoral_system = fct_lump(electoral_system_all, n = 7)
+    )
+
+elec_recent <- 
+  elec_sys %>% 
+  group_by(country) %>% 
+  filter(year == max(year)) %>% 
+  ungroup()
+
+scale_electoral_systems <- scale_fill_brewer(palette = 1, type = "qual", na.value = "grey80")
+```
+
+## Maps
+
+```{r message=FALSE, warning=FALSE}
+world_raw <- read_rds("worldmap.rds")
+
+world <- 
+  world_raw %>% 
+  st_crop(xmin = -150, xmax = 175, ymin = -54, ymax = 74) %>% 
+  left_join(elec_recent, by = "country")
+
+pl_world <- 
+  ggplot(world) +
+  scale_electoral_systems +
+  theme_void()
+
+pl_world +
+  geom_sf(aes(fill = electoral_system), lwd = 0.1) +
+  coord_sf(crs = "+proj=robin")
+```
+```{r}
+pl_a <- 
+  pl_world +
+  geom_sf(aes(fill = electoral_system), lwd = 0.1) +
+  coord_sf(crs = "+proj=lcc +lat_1=43 +lat_2=62 +lat_0=30 +lon_0=10",  # LCC Europe parameters
+           xlim = c(-1600000, 1700000), ylim = c(750000, 3600000)) +   # set map limits
+  labs(title = "Europe") +
+  guides(fill=FALSE)
+
+pl_b <- 
+  pl_world +
+  geom_sf(aes(fill = electoral_system), lwd = 0.1) +
+  coord_sf(crs = "+proj=robin",
+           xlim = c(9000000, 13250000), ylim = c(-1250000, 2600000)) +   # set map limits
+  labs(title = "Asia") +
+  guides(fill=FALSE)
+
+pl_a + pl_b
+```
+
+## Frequency
+
+```{r}
+elec_recent %>% count(electoral_system_all, sort = TRUE)
+```
+
+
+## Evolution
+
+### Number
+
+```{r}
+pl_dt <- 
+  elec_sys %>% 
+  mutate()
+
+pl <- 
+  ggplot(pl_dt, aes(year)) +
+  geom_histogram(aes(fill = electoral_system), position = "stack", binwidth = 1) +
+  scale_electoral_systems + 
+  xlim(1800, 2017) +
+  theme_minimal()
+print(pl)
+ggsave("z-vdem-electoral-system.png", width = 8, height = 6)
+```
+
+### Share
+
+```{r}
+ggplot(pl_dt, aes(year)) +
+  geom_histogram(aes(fill = electoral_system), position = "fill", binwidth = 1) +
+  scale_electoral_systems + 
+  xlim(1880, 2017) +
+  theme_minimal()
+```
+
+## Country changes
+
+```{r}
+continent <- 
+  world %>% 
+  select(country, continent) %>% 
+  mutate(
+    continent = case_when(
+       continent == "North America" ~ "America",
+       continent == "South America" ~ "America",
+       continent == "Oceania" ~ "Asia",
+       continent == "Seven seas (open ocean)" ~ "Asia",
+       TRUE ~ continent
+    )
+  ) %>% 
+  st_drop_geometry()
+
+elec_sys %>% 
+  group_by(country) %>% 
+  filter(electoral_system != lag(electoral_system) | row_number() == 1) %>% 
+  ungroup() %>% 
+  arrange(year, country) %>% 
+  left_join(continent, by = "country") %>% 
+  select(country_name, continent, year, electoral_system = electoral_system_all) %>% 
+  DT::datatable()
+```
+
