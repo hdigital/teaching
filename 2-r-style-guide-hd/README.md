@@ -46,6 +46,8 @@ workflow · ⚙️
   + restart R session and run all
   + check all object names
   + check console messages and warnings
++ reproducible environments with [Rocker](https://rocker-project.org/use/reproducibility.html)
+  + see [`Dockerfile`](Dockerfile) and [`docker-compose.yml`](docker-compose.yml) examples
 
 ---
 
@@ -66,4 +68,4 @@ library(tidyverse)  # load last to avoid masking
 
 ---
 
-_Note_ — These are my personal best practices for code formatting in Tidyverse R. They have evolved over time and not all my previous code my follow these guidelines.
+_Note_ — These are my personal best practices for code formatting in Tidyverse R. They have evolved over time and not all my previous code may follow these guidelines.
