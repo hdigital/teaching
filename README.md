@@ -36,16 +36,16 @@ _Tidyverse-R [first](http://varianceexplained.org/r/teach-tidyverse/)_
 
 Party family quiz
 
-![party family](0-courses/2019-moralpolitik/party-family-quiz.png)
+![party family](1-courses/2019-moralpolitik/party-family-quiz.png)
 
 ---
 
 Maps turnout (2019)
 
-![turnout](0-courses/2019-maps-turnout/turnout.png)
+![turnout](1-courses/2019-maps-turnout/turnout.png)
 
 ---
 
 Parteien in Deutschland (2018)
 
-![state elections](0-courses/2018-parteien-deutschland/wid-ergebnisse.png)
+![state elections](1-courses/2018-parteien-deutschland/wid-ergebnisse.png)
