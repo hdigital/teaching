@@ -1,6 +1,8 @@
 # Teaching material
 
-Holger Döring — University of Bremen — doering@uni-bremen.de
+Holger Döring // GESIS – Leibniz Institute for the Social Sciences
+
++ code snippets mainly from teaching at the University of Bremen until 2021
 
 ---
 
