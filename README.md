@@ -13,7 +13,7 @@ _Tidyverse-R [first](http://varianceexplained.org/r/teach-tidyverse/)_
 + __Core references__
   + [OpenIntro Labs in Tidyverse-R](https://github.com/OpenIntroStat/oiLabs-tidy)  — _[ Beginners (download) ]_
   + [__Computing for the Social Sciences__](https://cfss.uchicago.edu/notes/why-visualize-data/) — _[ Beginners ]_
-  + Grolemund, Garrett, and Hadley Wickham. 2016. [R for Data Science](https://r4ds.had.co.nz/). Sebastopol, CA: O’Reilly Media. — _[ Intermediate ]_
+  + Wickham, Hadley, Mine Çetinkaya-Rundel and Garrett Grolemund. 2022. [R for Data Science. 2nd ed](https://r4ds.hadley.nz/). Sebastopol, CA: O’Reilly Media. — _[ Intermediate ]_
   + Wilke, Claus. 2019. [Fundamentals of Data Visualization](https://serialmentor.com/dataviz/). Sebastopol, CA: O’Reilly Media.
 + __More references__
   + Healy, Kieran. 2018. [Data Visualization: A Practical Introduction](https://socviz.co/). Princeton, NJ: Princeton University Press.
