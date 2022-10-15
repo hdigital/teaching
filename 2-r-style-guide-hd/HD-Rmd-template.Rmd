@@ -1,0 +1,100 @@
+---
+title: "HD Rmd template"
+author: "Holger Doering --- holger.doering@gesis.org"
+date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
+output:
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    code_folding: hide
+    toc: yes
+    toc_float: yes
+---
+<style type="text/css"> <!-- .table { width: auto } ---> </style>
+
+```{r options, include=FALSE}
+knitr::opts_knit$set(
+  # results = "hide",
+  # comment = NA,
+  message = FALSE,
+  warning = FALSE,
+  package.startup.message = FALSE
+  # # some options not used in "html_notebook" preview
+  )
+
+options(
+  tidyverse.quiet = TRUE,
+  dplyr.summarise.inform = FALSE,
+  readr.num_columns = 0,
+  knitr.kable.NA = "",
+  width = 100
+)
+```
+
+
+```{r corepacks}
+library(broom)      # models // tidy results
+library(ggeffects)  # models // visualize model effects
+library(patchwork)  # plots // arrange
+library(tidyverse)  # load last to avoid masking
+# DT:: knitr:: skimr::
+
+ggplot2::theme_set(theme_minimal())
+
+round_numeric_variables <- function(data, digits) {
+  data |> mutate(across(where(is.numeric), round, digits))
+  }
+```
+
+<https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html>
+
+
+## Summary data
+
+```{r data}
+mtcars_raw <- datasets::mtcars
+
+mtcars_raw |> 
+  skimr::skim() |> 
+  round_numeric_variables(1) |>
+  select(-matches("numeric\\.p.5"), -complete_rate) |> 
+  knitr::knit_print()
+```
+
+```{r figure}
+pl_dt <- 
+  mtcars_raw |> 
+  mutate(cyl = forcats::as_factor(cyl))
+
+pl1 <- ggplot(pl_dt, aes(x=hp, y=mpg, color=cyl, shape=cyl)) +
+  geom_point(size=3)
+
+pl2 <- ggplot(pl_dt, aes(x=hp, y=mpg)) +
+  geom_point(alpha=0.5) +
+  geom_smooth()
+
+pl1 + pl2
+```
+
+
+## Linear model
+
+```{r}
+m1 <- lm(mpg ~ log(hp), data = mtcars_raw)
+
+tidy(m1) |> round_numeric_variables(2)
+glance(m1) |> round_numeric_variables(2)
+
+ggpredict(m1, terms = "hp") |> plot()
+```
+
+## Explore data
+
+```{r explore}
+mtcars_raw |> 
+  select(mpg, hp, cyl, gear) |> 
+  DT::datatable()
+```
