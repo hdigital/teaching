@@ -60,7 +60,7 @@ library(lme4)       # models // multi-level
 library(broom)      # models // tidy results
 library(broom.mixed)
 library(ggeffects)  # models // visualize model effects
-library(patchwork)  # plots // arrange
+library(patchwork)  # plots  // arrange
 library(sf)         # maps
 library(tidyverse)  # load last to avoid masking
 # DT:: skimr:: viridis::
