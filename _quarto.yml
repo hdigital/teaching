@@ -4,6 +4,8 @@ project:
 
 website:
   title: "learning"
+  site-url: https://hdigital.github.io/teaching/
+  description: Things I learned
   navbar:
     right:
       - about.qmd
@@ -11,6 +13,8 @@ website:
         href: https://github.com/
       - icon: twitter
         href: https://twitter.com
+      - icon: rss
+        href: index.xml
 format:
   html:
     theme: cosmo
