@@ -3,12 +3,12 @@ title: "HD Rmd template"
 author: "Holger Doering --- holger.doering@gesis.org"
 date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
 output:
-  html_notebook:
+  html_document:
+    df_print: paged
     code_folding: hide
     toc: yes
     toc_float: yes
-  html_document:
-    df_print: paged
+  html_notebook:
     code_folding: hide
     toc: yes
     toc_float: yes
@@ -47,10 +47,14 @@ library(tidyverse)  # —      // load last to avoid masking
 
 ggplot2::theme_set(theme_minimal())
 
-round_numeric_variables <- function(data, digits) {
-  data |> mutate(across(where(is.numeric), round, digits))
+round_numeric_variables <- function(data, digits = 0) {
+  data |> mutate(across(where(is.numeric), \(x) round(x, digits)))
   }
 ```
+
+_Note_ -- see [Quarto](https://quarto.org/docs/guide/) and use it potentially instead of [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
+
+---
 
 <https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html>
 
@@ -58,17 +62,26 @@ round_numeric_variables <- function(data, digits) {
 ## Summary data
 
 ```{r data}
-mtcars_raw <- datasets::mtcars
+mtcars_raw <- as_tibble(datasets::mtcars)
+```
 
+
+```{r check, eval=FALSE}
+glimpse(mtcars)
+summary(mtcars)
+```
+
+
+```{r skim}
 mtcars_raw |> 
   skimr::skim() |> 
   select(-matches("numeric\\.p.5"), -skim_type, -complete_rate) |> 
   rename_with(~ str_remove(.x, "^skim_|^n_|^numeric\\.")) |> 
-  round_numeric_variables(2) |> 
+  round_numeric_variables(1) |> 
   knit_print()
 ```
 
-```{r figure}
+```{r figure, message=FALSE}
 pl_dt <- 
   mtcars_raw |> 
   mutate(cyl = forcats::as_factor(cyl))
@@ -78,7 +91,7 @@ pl1 <- ggplot(pl_dt, aes(x=hp, y=mpg, color=cyl, shape=cyl)) +
 
 pl2 <- ggplot(pl_dt, aes(x=hp, y=mpg)) +
   geom_point(alpha=0.5) +
-  geom_smooth()
+  geom_smooth(se = FALSE)
 
 pl1 + pl2
 ```
@@ -89,13 +102,15 @@ pl1 + pl2
 ```{r}
 m1 <- lm(mpg ~ log(hp), data = mtcars_raw)
 
-tidy(m1) |> kable(digits =2)
-glance(m1) |> kable(digits =2)
+tidy(m1) |> kable(digits = 2)
+glance(m1) |> kable(digits = 2)
 
 ggpredict(m1, terms = "hp") |> plot()
 ```
 
 ## Explore data
+
+_Note_ -- may only work in HTML documents (Knit to HTML) and not in Notebooks (Preview)
 
 ```{r explore}
 mtcars_raw |> 
