@@ -62,29 +62,33 @@ _Note_ -- see [Quarto](https://quarto.org/docs/guide/) and use it potentially in
 ## Summary data
 
 ```{r data}
-mtcars_raw <- as_tibble(datasets::mtcars)
+cars <-
+  datasets::mtcars |>
+  rownames_to_column(var = "car") |>
+  as_tibble()
 ```
 
 
 ```{r check, eval=FALSE}
-glimpse(mtcars)
-summary(mtcars)
+glimpse(cars)
+summary(cars)
 ```
 
 
 ```{r skim}
-mtcars_raw |> 
-  skimr::skim() |> 
-  select(-matches("numeric\\.p.5"), -skim_type, -complete_rate) |> 
-  rename_with(~ str_remove(.x, "^skim_|^n_|^numeric\\.")) |> 
-  round_numeric_variables(1) |> 
-  knit_print()
+cars |>
+  select(-car) |>
+  skimr::skim() |>
+  select(-matches("numeric\\.p.5"), -skim_type, -complete_rate) |>
+  rename_with(~ str_remove(.x, "^skim_|^n_|^numeric\\.")) |>
+  round_numeric_variables(1) |>
+  kable()
 ```
 
 ```{r figure, message=FALSE}
-pl_dt <- 
-  mtcars_raw |> 
-  mutate(cyl = forcats::as_factor(cyl))
+pl_dt <-
+  cars |>
+  mutate(cyl = as_factor(cyl))
 
 pl1 <- ggplot(pl_dt, aes(x=hp, y=mpg, color=cyl, shape=cyl)) +
   geom_point(size=3)
@@ -100,7 +104,7 @@ pl1 + pl2
 ## Linear model
 
 ```{r}
-m1 <- lm(mpg ~ log(hp), data = mtcars_raw)
+m1 <- lm(mpg ~ log(hp), data = cars)
 
 tidy(m1) |> kable(digits = 2)
 glance(m1) |> kable(digits = 2)
@@ -113,7 +117,7 @@ ggpredict(m1, terms = "hp") |> plot()
 _Note_ -- may only work in HTML documents (Knit to HTML) and not in Notebooks (Preview)
 
 ```{r explore}
-mtcars_raw |> 
-  select(mpg, hp, cyl, gear) |> 
+cars |>
+  select(car, mpg, hp, cyl, gear) |>
   reactable(searchable = TRUE)
 ```
