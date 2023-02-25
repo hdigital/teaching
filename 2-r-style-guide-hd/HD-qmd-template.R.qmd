@@ -1,0 +1,98 @@
+---
+title: "HD Quarto template R"
+author: "Holger Doering --- holger.doering@gesis.org"
+date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
+execute:
+  # messages: false
+  warning: false
+format:
+  html:
+    code-fold: true
+    embed-resources: true
+    toc: true
+---
+
+```{r corepacks}
+library(broom)      # models // tidy results
+library(ggeffects)  # models // visualize model effects
+library(patchwork)  # plots  // arrange
+library(reactable)  # layout // interactive data tables
+
+library(knitr)      # layout // tables in RMarkdown with kable()
+library(tidyverse)  # —      // load last to avoid masking
+# skimr::           # packages // used (once) but not loaded
+
+ggplot2::theme_set(theme_minimal())
+
+round_numeric_variables <- function(data, digits = 0) {
+  data |> mutate(across(where(is.numeric), \(x) round(x, digits)))
+  }
+```
+
+---
+
+<https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/cars.html>
+
+
+## Summary data
+
+```{r data}
+cars <-
+  datasets::mtcars |>
+  rownames_to_column(var = "car") |>
+  as_tibble()
+```
+
+
+```{r check}
+#| eval=FALSE
+
+glimpse(cars)
+summary(cars)
+```
+
+
+```{r skim}
+cars |>
+  select(-car) |>
+  skimr::skim() |>
+  select(-matches("numeric\\.p.5"), -skim_type, -complete_rate) |>
+  rename_with(~ str_remove(.x, "^skim_|^n_|^numeric\\.")) |>
+  round_numeric_variables(1) |>
+  kable()
+```
+
+```{r figure, message=FALSE}
+pl_dt <-
+  cars |>
+  mutate(cyl = as_factor(cyl))
+
+pl1 <- ggplot(pl_dt, aes(x=hp, y=mpg, color=cyl, shape=cyl)) +
+  geom_point(size=3)
+
+pl2 <- ggplot(pl_dt, aes(x=hp, y=mpg)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(se = FALSE)
+
+pl1 + pl2
+```
+
+
+## Linear model
+
+```{r}
+m1 <- lm(mpg ~ log(hp), data = cars)
+
+tidy(m1) |> kable(digits = 2)
+glance(m1) |> kable(digits = 2)
+
+ggpredict(m1, terms = "hp") |> plot()
+```
+
+## Explore data
+
+```{r explore}
+cars |>
+  select(car, mpg, hp, cyl, gear) |>
+  reactable(searchable = TRUE)
+```
