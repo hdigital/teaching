@@ -17,12 +17,12 @@ output:
 
 ```{r options, include=FALSE}
 knitr::opts_knit$set(
-  # results = "hide",
+  # # options not used in "html_notebook" preview (*.nb.html, RStudio)
   # comment = NA,
   message = FALSE,
+  # results = "hide",
   warning = FALSE,
   package.startup.message = FALSE
-  # # some options not used in "html_notebook" preview
   )
 
 options(
