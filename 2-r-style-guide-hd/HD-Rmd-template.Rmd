@@ -23,7 +23,7 @@ knitr::opts_knit$set(
   # results = "hide",
   warning = FALSE,
   package.startup.message = FALSE
-  )
+)
 
 options(
   tidyverse.quiet = TRUE,
@@ -49,7 +49,7 @@ ggplot2::theme_set(theme_minimal())
 
 round_numeric_variables <- function(data, digits = 0) {
   data |> mutate(across(where(is.numeric), \(x) round(x, digits)))
-  }
+}
 ```
 
 _Note_ -- see [Quarto](https://quarto.org/docs/guide/) and use it potentially instead of [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
@@ -90,11 +90,16 @@ pl_dt <-
   cars |>
   mutate(cyl = as_factor(cyl))
 
-pl1 <- ggplot(pl_dt, aes(x=hp, y=mpg, color=cyl, shape=cyl)) +
-  geom_point(size=3)
+pl1 <- ggplot(pl_dt, aes(
+  x = hp,
+  y = mpg,
+  color = cyl,
+  shape = cyl
+)) +
+  geom_point(size = 3)
 
-pl2 <- ggplot(pl_dt, aes(x=hp, y=mpg)) +
-  geom_point(alpha=0.5) +
+pl2 <- ggplot(pl_dt, aes(x = hp, y = mpg)) +
+  geom_point(alpha = 0.5) +
   geom_smooth(se = FALSE)
 
 pl1 + pl2
