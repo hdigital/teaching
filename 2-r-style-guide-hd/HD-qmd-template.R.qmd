@@ -13,14 +13,18 @@ format:
 ---
 
 ```{r corepacks}
+library(tidyverse)
+library(knitr)      # layout // tables in RMarkdown with kable()
+
 library(broom)      # models // tidy results
 library(ggeffects)  # models // visualize model effects
 library(patchwork)  # plots  // arrange
 library(reactable)  # layout // interactive data tables
-
-library(knitr)      # layout // tables in RMarkdown with kable()
-library(tidyverse)  # —      // load last to avoid masking
 # skimr::           # packages // used (once) but not loaded
+
+library(conflicted) # create errors for function name conflicts
+conflicts_prefer(dplyr::filter, .quiet = TRUE)
+# conflict_scout()
 
 ggplot2::theme_set(theme_minimal())
 
@@ -93,6 +97,7 @@ glance(m1) |> kable(digits = 2)
 
 ggpredict(m1, terms = "hp") |> plot()
 ```
+
 
 ## Explore data
 
