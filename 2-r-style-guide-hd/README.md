@@ -56,13 +56,18 @@ workflow · ⚙️
 Loading packages
 
 ```r
-library(lme4)       # models // multi-level
+library(conflicted) # create errors for function name conflicts
+conflicts_prefer(dplyr::filter, .quiet = TRUE)
+
+library(tidyverse)
+
+# order alphabetically in section and provide category with brief description
 library(broom)      # models // tidy results
-library(broom.mixed)
 library(ggeffects)  # models // visualize model effects
-library(patchwork)  # plots  // arrange
-library(sf)         # maps
-library(tidyverse)  # load last to avoid masking
+library(patchwork)  # plots  // arrange plots
+library(reactable)  # layout // interactive data tables
+library(sf)         # maps   // spatial data tools
+
 # DT:: skimr:: viridis::
 ```
 
