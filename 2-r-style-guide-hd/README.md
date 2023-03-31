@@ -10,20 +10,6 @@ pipes — `|>` · 🌬️
   + placeholder `_` (`|>`) instead of `.` (`%>%`)
   + check _Use native pipe operator_ in [RStudio](https://www.rstudio.com/blog/rstudio-v1-4-update-whats-new/)
 
-packages · 📦 // see snippet below
-
-+ load `library(tidyverse)` last
-  + [ avoid name conflicts ]
-+ brief description why package is loaded
-  + `library(broom)  # models // tidy results`
-+ order packages loaded by thematic groups
-  + _plot_ — patchwork ggrepel
-  + _models_ — broom · ggeffects
-+ single usage of package with `::`
-  + comment below loading packages block // `# janitor::`
-  + no comment for usage tidyverse of packages that are not loaded with _library(tidyverse)_ (e.g. glue readxl)
-  + [ reduce potential name conflicts and code completion options ]
-
 data · 🔢
 
 + use coherent prefixes for groups of data // `dt dt_ctry dt_ctz`
@@ -48,6 +34,22 @@ workflow · ⚙️
   + check console messages and warnings
 + reproducible environments with [Rocker](https://rocker-project.org/use/reproducibility.html)
   + see [`Dockerfile`](Dockerfile) and [`docker-compose.yml`](docker-compose.yml) examples
+
+packages · 📦 // see snippet below
+
++ use [conflicted](https://conflicted.r-lib.org/) to avoid function name conflicts
+  + load first with `library(conflicted)`
+  + specify preferred functions (e.g. `conflicts_prefer(dplyr::filter())`)
++ load `library(tidyverse)` after `conflicted`
++ add brief description why package is loaded
+  + `library(broom)  # models // tidy results`
++ order packages loaded by thematic groups
+  + _plot_ — patchwork ggrepel
+  + _models_ — broom · ggeffects
++ specify single usage of package with `::`
+  + comment below loading packages block // `# janitor::`
+  + no comment for usage tidyverse of packages that are not loaded with _library(tidyverse)_ (e.g. glue readxl)
+  + [ reduce potential name conflicts and code completion options ]
 
 ---
 
