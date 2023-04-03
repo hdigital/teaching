@@ -9,8 +9,8 @@ negative_numbers_into_NA <- TRUE
 ## Read data ----
 
 # prefer SPSS with labelled data -- previously problems with Stata encodings and missings
-file_source <- "source__ZA5270/ZA5270_v2-0-0.sav.zip"
-files_out <- "source__Allbus-2018"
+file_source <- "source__ZA5280/ZA5280_v2-0-0.sav"
+files_out <- "source__Allbus-2021"
 
 svy_format <- case_when(
   str_detect(file_source, "dta") ~ "stata",
