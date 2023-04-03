@@ -34,8 +34,8 @@ svy_var <-
     label = map_chr(tmp_1, ~ if_else(is.null(.x), "", .x)),
     tmp_2 = map(names(raw_svy), ~ attr(raw_svy[[.x]], svy_format)),
     format = map_chr(tmp_2, ~ if_else(is.null(.x), "", .x)),
-    factor = map_int(variable, ~ attributes(raw_svy[[.x]])[["labels"]] %>% max() > 0 )
-  ) %>%
+    factor = map_int(variable, ~ attributes(raw_svy[[.x]])[["labels"]] |> max() > 0 )
+  ) |>
   select(-tmp_1, -tmp_2)
 
 
@@ -58,8 +58,8 @@ svy_label <- map_df(names(raw_svy), get_svy_labels)
 
 # get names of factor variables
 to_factor <-
-  svy_var %>%
-  filter(factor == 1) %>%
+  svy_var |>
+  filter(factor == 1) |>
   pull(variable)
 
 svy_dt <- raw_svy
@@ -71,8 +71,8 @@ if(negative_numbers_into_NA == TRUE) {
 
 # remove unused factor levels not used and variable labels
 svy_dt <-
-  svy_dt %>%
-  mutate(across(any_of(to_factor), ~ as_factor(.x) %>% fct_drop())) %>%
+  svy_dt |>
+  mutate(across(any_of(to_factor), ~ as_factor(.x) |> fct_drop())) |>
   zap_labels()
 
 
