@@ -32,11 +32,10 @@ svy_var <-
     variable = names(raw_svy),
     tmp_1 = map(variable, \(.x) attributes(raw_svy[[.x]])[["label"]]),
     label = map_chr(tmp_1, \(.x) if_else(is.null(.x), "", .x)),
-    tmp_2 = map(names(raw_svy), \(.x) attr(raw_svy[[.x]], svy_format)),
-    format = map_chr(tmp_2, \(.x) if_else(is.null(.x), "", .x)),
+    # format = map(names(raw_svy), \(.x) typeof(raw_svy[[.x]])),
     factor = map_int(variable, \(.x) attributes(raw_svy[[.x]])[["labels"]] |> max() > 0 )
   ) |>
-  select(-tmp_1, -tmp_2)
+  select(-tmp_1)
 
 
 ## Variable labels ----
