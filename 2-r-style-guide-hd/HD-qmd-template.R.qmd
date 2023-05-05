@@ -1,9 +1,10 @@
 ---
 title: "HD Quarto template R"
 author: "Holger Doering --- holger.doering@gesis.org"
-date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
+date: today
 execute:
-  # messages: false
+  cache: false
+  messages: true
   warning: false
 format:
   html:
