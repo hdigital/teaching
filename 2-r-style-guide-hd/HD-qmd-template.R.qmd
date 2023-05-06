@@ -21,7 +21,7 @@ library(broom)      # models // tidy results
 library(ggeffects)  # models // visualize model effects
 library(patchwork)  # plots  // arrange
 library(reactable)  # layout // interactive data tables
-# skimr::           # packages // used (once) but not loaded
+library(skimr)      # packages // used (once) but not loaded
 
 library(conflicted) # create errors for function name conflicts
 conflicts_prefer(dplyr::filter, .quiet = TRUE)
@@ -45,6 +45,7 @@ round_numeric_variables <- function(data, digits = 0) {
 cars <-
   datasets::mtcars |>
   rownames_to_column(var = "car") |>
+  mutate(across(c(cyl, gear), as_factor)) |> 
   as_tibble()
 ```
 
@@ -58,21 +59,23 @@ summary(cars)
 
 
 ```{r skim}
-cars |>
-  select(-car) |>
-  skimr::skim() |>
-  select(-matches("numeric\\.p.5"), -skim_type, -complete_rate) |>
-  rename_with(~ str_remove(.x, "^skim_|^n_|^numeric\\.")) |>
-  round_numeric_variables(1) |>
-  kable()
+cars |> skim()
 ```
 
-```{r figure, message=FALSE}
-pl_dt <-
+```{r skim-numeric}
+cars_skim <- 
   cars |>
-  mutate(cyl = as_factor(cyl))
+  skim()  |>
+  select(skim_variable, matches("^numeric"))  |>
+  rename_with(~ str_remove(.x, "^skim_|^numeric\\.")) |>
+  round_numeric_variables(1)
+```
 
-pl1 <- ggplot(pl_dt, aes(
+
+## Visualization
+
+```{r figure, message=FALSE}
+pl1 <- ggplot(cars, aes(
   x = hp,
   y = mpg,
   color = cyl,
@@ -80,7 +83,7 @@ pl1 <- ggplot(pl_dt, aes(
 )) +
   geom_point(size = 3)
 
-pl2 <- ggplot(pl_dt, aes(x = hp, y = mpg)) +
+pl2 <- ggplot(cars, aes(x = hp, y = mpg)) +
   geom_point(alpha = 0.5) +
   geom_smooth(se = FALSE)
 
@@ -91,12 +94,12 @@ pl1 + pl2
 ## Linear model
 
 ```{r}
-m1 <- lm(mpg ~ log(hp), data = cars)
+m1 <- lm(mpg ~ log(hp) + gear, data = cars)
 
 tidy(m1) |> kable(digits = 2)
 glance(m1) |> kable(digits = 2)
 
-ggpredict(m1, terms = "hp") |> plot()
+ggpredict(m1, terms = c("hp", "gear")) |> plot()
 ```
 
 
@@ -105,5 +108,5 @@ ggpredict(m1, terms = "hp") |> plot()
 ```{r explore}
 cars |>
   select(car, mpg, hp, cyl, gear) |>
-  reactable(searchable = TRUE)
+  reactable(searchable = TRUE, striped = TRUE)
 ```
