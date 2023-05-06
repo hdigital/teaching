@@ -3,12 +3,12 @@ title: "HD Rmd template"
 author: "Holger Doering --- holger.doering@gesis.org"
 date: "`r format(Sys.time(), '%d %B %Y, %H:%M')`"
 output:
-  html_notebook:
+  html_document:
+    df_print: paged
     code_folding: hide
     toc: yes
     toc_float: yes
-  html_document:
-    df_print: paged
+  html_notebook:
     code_folding: hide
     toc: yes
     toc_float: yes
@@ -34,100 +34,23 @@ options(
 )
 ```
 
+## Information
 
-```{r corepacks}
++ use mainly for interactive data exploration in [__notebooks__](https://rmarkdown.rstudio.com/lesson-10.html) with RStudio
++ use [Quarto](https://quarto.org/docs/guide/) for __documents__ instead of [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
++ see more code examples in [HD qmd template](https://github.com/hdigital/teaching/blob/main/2-r-style-guide-hd/HD-qmd-template.R.qmd)
+
+
+
+```{r snippet, message=FALSE}
 library(tidyverse)
-library(knitr)      # layout // tables in RMarkdown with kable()
 
-library(broom)      # models // tidy results
-library(ggeffects)  # models // visualize model effects
-library(patchwork)  # plots  // arrange
-library(reactable)  # layout // interactive data tables
-# skimr::           # packages // used (once) but not loaded
-
-library(conflicted) # create errors for function name conflicts
-conflicts_prefer(dplyr::filter, .quiet = TRUE)
-# conflict_scout()
-
-ggplot2::theme_set(theme_minimal())
-
-round_numeric_variables <- function(data, digits = 0) {
-  data |> mutate(across(where(is.numeric), \(x) round(x, digits)))
-}
-```
-
-_Note_ -- see [Quarto](https://quarto.org/docs/guide/) and use it potentially instead of [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
-
----
-
-<https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html>
-
-
-## Summary data
-
-```{r data}
 cars <-
   datasets::mtcars |>
-  rownames_to_column(var = "car") |>
   as_tibble()
-```
 
-
-```{r check, eval=FALSE}
-glimpse(cars)
-summary(cars)
-```
-
-
-```{r skim}
-cars |>
-  select(-car) |>
-  skimr::skim() |>
-  select(-matches("numeric\\.p.5"), -skim_type, -complete_rate) |>
-  rename_with(~ str_remove(.x, "^skim_|^n_|^numeric\\.")) |>
-  round_numeric_variables(1) |>
-  kable()
-```
-
-```{r figure, message=FALSE}
-pl_dt <-
-  cars |>
-  mutate(cyl = as_factor(cyl))
-
-pl1 <- ggplot(pl_dt, aes(
-  x = hp,
-  y = mpg,
-  color = cyl,
-  shape = cyl
-)) +
-  geom_point(size = 3)
-
-pl2 <- ggplot(pl_dt, aes(x = hp, y = mpg)) +
+ggplot(cars, aes(x = hp, y = mpg)) +
   geom_point(alpha = 0.5) +
   geom_smooth(se = FALSE)
-
-pl1 + pl2
 ```
 
-
-## Linear model
-
-```{r}
-m1 <- lm(mpg ~ log(hp), data = cars)
-
-tidy(m1) |> kable(digits = 2)
-glance(m1) |> kable(digits = 2)
-
-ggpredict(m1, terms = "hp") |> plot()
-```
-
-
-## Explore data
-
-_Note_ -- may only work in HTML documents (Knit to HTML) and not in Notebooks (Preview)
-
-```{r explore}
-cars |>
-  select(car, mpg, hp, cyl, gear) |>
-  reactable(searchable = TRUE)
-```
