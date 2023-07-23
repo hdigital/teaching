@@ -1,5 +1,13 @@
 # R style guide HD
 
+Legacy version July 2023 · 🗄️
+
+- migrated R template to <https://github.com/hdigital/starter-r>
+- only RMarkdown document and style guide kept
+- removed Rocker and Quarto examples
+
+---
+
 [The tidyverse style guide](https://style.tidyverse.org/)
 
 pipes — `|>` · 🌬️
